@@ -1,0 +1,37 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Packaging outputs
+build/
+dist/
+*.egg-info/
+
+# Environments
+.venv/
+.venv*/
+.env
+.env.*
+.uv/
+
+# Caches and test artifacts
+.cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Logs
+logs/
+lightning_logs/
+*.log
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
