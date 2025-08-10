@@ -1,0 +1,11 @@
+seed_everything: null
+
+trainer: null
+
+model:
+  class_path: null
+  init_args: null
+
+data:
+  class_path: null
+  init_args: null
