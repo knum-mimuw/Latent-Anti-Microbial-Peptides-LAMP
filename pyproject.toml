@@ -1,18 +1,14 @@
 [project]
-name = "latent-anti-microbial-peptides-lamp"
+name = "lamp"
 version = "0.1.0"
-description = "Add your description here"
+description = "LAMP workspace with multiple packages for antimicrobial peptide modelling and exploration"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "neptune>=1.14.0",
     "pytest>=8.4.1",
-    "pytorch-lightning>=2.5.2",
     "ruff>=0.12.8",
 ]
-
-[project.scripts]
-lamp = "lamp.__main__:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -47,4 +43,12 @@ skip-magic-trailing-comma = false
 [tool.uv]
 dev-dependencies = [
   "ruff>=0.5.0",
+]
+
+[tool.uv.workspace]
+# Include the setup package (data preparation tools) as a workspace member
+members = [
+  "./setup",
+  "src/pep_compass_jr",
+  "src/modelling",
 ]
