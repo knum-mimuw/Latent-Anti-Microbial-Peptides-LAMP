@@ -153,3 +153,7 @@ TODO: fill the TL;DR
 ### [Accelerating Antimicrobial Peptide Discovery with Latent Structure](https://arxiv.org/pdf/2212.09450v2)
 <span class="amp">AMP</span>
 #### TL;DR
+
+### [PepCompass: Navigating peptide embedding spaces using Riemannian Geometry](https://arxiv.org/abs/2510.01988)
+<span class="amp">AMP</span> <span class="geometry">Geometry</span>
+#### TL;DR
