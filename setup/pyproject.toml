@@ -1,37 +1,42 @@
 [project]
-name = "lamp"
+name = "lamp-setup"
 version = "0.1.0"
-description = "LAMP workspace with multiple packages for antimicrobial peptide modelling and exploration"
-readme = "README.md"
+description = "Data preparation utilities for LAMP project"
+readme = "prepare_data/README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "neptune>=1.14.0",
-    "pytest>=8.4.1",
-    "ruff>=0.12.8",
+    "pandas>=2.0.0",
+    "datasets>=2.14.0",
+    "requests>=2.31.0",
+    "huggingface-hub>=0.35.3",
+    "typer>=0.19.2",
+    "pydantic>=2.7.0",
+    "PyYAML>=6.0.0",
 ]
+
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["setup*"]
 
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["src"]
+src = ["."]
 respect-gitignore = true
 
 [tool.ruff.lint]
-# E/F: pycodestyle/pyflakes, I: isort, UP: pyupgrade, B: flake8-bugbear
 select = ["E", "F", "I", "UP", "B"]
 ignore = [
   "E203",  # Whitespace before ':' (compatible with many formatters)
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["lamp"]
+known-first-party = ["setup"]
 combine-as-imports = true
 
 [tool.ruff.format]
@@ -39,16 +44,3 @@ quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
 skip-magic-trailing-comma = false
-
-[tool.uv]
-dev-dependencies = [
-  "ruff>=0.5.0",
-]
-
-[tool.uv.workspace]
-# Include the setup package (data preparation tools) as a workspace member
-members = [
-  "./setup",
-  "src/pep_compass_jr",
-  "src/modelling",
-]

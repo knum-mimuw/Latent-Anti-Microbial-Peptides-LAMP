@@ -1,0 +1,24 @@
+# Configuration for ESM2 UniRef dataset preparation and upload
+# This creates a subset under a main dataset repository
+
+# Data preparation configuration
+prepare:
+  dataset_name: nvidia/esm2_uniref_pretraining_data
+  splits: [train, validation]
+  max_length: 50
+  max_sequences: 10  # Set to 10 for debug upload
+
+# Upload configuration
+upload:
+  repo_id: pszmk/LAMP-datasets
+  subset_name: nvidia_esm2_uniref_pretraining_data_leq50aa
+  
+  commit_message: "Add ESM2 UniRef short sequences (≤50 AA) with train/validation splits"
+  token: null  # Will use HF_TOKEN environment variable if not set
+  
+  # Column mapping for Hugging Face dataset
+  columns:
+    ur50_id: ur50_id
+    ur90_id: ur90_id
+    sequence: sequence
+    length: length
