@@ -1,5 +1,5 @@
-repo_name: lamp_short_proteins
-private: true
+repo_name: LAMP-datasets
+private: false
 # organization: your-org   # optional
 # token: hf_xxx            # optional; otherwise uses HF_TOKEN
 

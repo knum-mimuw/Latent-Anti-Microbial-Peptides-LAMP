@@ -14,8 +14,6 @@ dependencies = [
     "PyYAML>=6.0.0",
 ]
 
-[project.scripts]
-lamp-data-prep = "setup.prepare_data.__main__:app"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
