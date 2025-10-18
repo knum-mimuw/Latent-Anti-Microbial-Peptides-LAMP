@@ -10,14 +10,7 @@
 - **Access**: Public via UniProt REST API
 - **Implementation**: `setup/prepare_data/prepare_uniref.py`
 
-### Hugging Face Datasets
-- **Platform**: [Hugging Face Hub](https://huggingface.co/datasets)
-- **Purpose**: Dataset storage and sharing
-- **Format**: Hugging Face Dataset format
-- **Authentication**: HF_TOKEN environment variable
-- **Implementation**: `setup/prepare_data/upload_data_to_huggingface.py`
+https://huggingface.co/datasets/nvidia/esm2_uniref_pretraining_data/viewer/default/train?row=4
 
-## Secondary Sources
-- Literature-curated AMP datasets (referenced in literature review)
-- Experimental validation data
-- Cross-references from multiple databases
+ampsphere
+hydramp data
