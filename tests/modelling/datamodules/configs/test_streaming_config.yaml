@@ -1,0 +1,13 @@
+# Test configuration for streaming datasets
+train_datasets:
+  - name: "train"
+    cfg:
+      path: "pszmk/LAMP-datasets"
+      name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
+      split: "train"
+      streaming: true
+
+train_dataloader:
+  batch_size: 4
+  shuffle: true
+  num_workers: 0  # Set to 0 to avoid multiprocessing warnings in tests
