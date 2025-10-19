@@ -1,0 +1,39 @@
+# Test configuration using real LAMP dataset
+train_datasets:
+  - name: "train"
+    cfg:
+      path: "pszmk/LAMP-datasets"
+      name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
+      split: "train"
+      streaming: false
+
+val_datasets:
+  - name: "val"
+    cfg:
+      path: "pszmk/LAMP-datasets"
+      name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
+      split: "train"  # Using train split for validation in tests
+      streaming: false
+
+test_datasets:
+  - name: "test"
+    cfg:
+      path: "pszmk/LAMP-datasets"
+      name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
+      split: "train"  # Using train split for test in tests
+      streaming: false
+
+train_dataloader:
+  batch_size: 2
+  shuffle: true
+  num_workers: 0  # Set to 0 to avoid multiprocessing warnings in tests
+
+val_dataloader:
+  batch_size: 2
+  shuffle: false
+  num_workers: 0  # Set to 0 to avoid multiprocessing warnings in tests
+
+test_dataloader:
+  batch_size: 2
+  shuffle: false
+  num_workers: 0  # Set to 0 to avoid multiprocessing warnings in tests

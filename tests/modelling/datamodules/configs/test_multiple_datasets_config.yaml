@@ -1,0 +1,15 @@
+# Test configuration with multiple datasets for testing merging
+train_datasets:
+  - name: "dataset1"
+    cfg:
+      path: "test-dataset-1"
+      split: "train"
+  - name: "dataset2"
+    cfg:
+      path: "test-dataset-2"
+      split: "train"
+
+train_dataloader:
+  batch_size: 8
+  shuffle: true
+  num_workers: 0  # Set to 0 to avoid multiprocessing warnings in tests
