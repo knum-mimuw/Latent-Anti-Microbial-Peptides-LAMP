@@ -16,7 +16,8 @@ model:
             model_class_path: transformers.XLSTMModel
             pretrained_model_name_or_path: mistralai/xlstm-base
             config_class_path: transformers.XLSTMConfig
-            load_kwargs:
+            load_pretrained: false
+            config_kwargs:
               trust_remote_code: true
         decoder:
           class_path: modelling.models.aes.base.HFBackboneConfig
@@ -24,6 +25,7 @@ model:
             model_class_path: transformers.XLSTMModel
             pretrained_model_name_or_path: mistralai/xlstm-base
             config_class_path: transformers.XLSTMConfig
-            load_kwargs:
+            load_pretrained: false
+            config_kwargs:
               trust_remote_code: true
 
