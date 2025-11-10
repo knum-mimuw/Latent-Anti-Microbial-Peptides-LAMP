@@ -70,9 +70,7 @@ def load_model_from_huggingface(
             return model_class.from_pretrained(
                 pretrained_model_name_or_path, config=config, **kwargs
             )
-        return model_class.from_pretrained(
-            pretrained_model_name_or_path, **kwargs
-        )
+        return model_class.from_pretrained(pretrained_model_name_or_path, **kwargs)
 
     if config is None:
         raise ValueError(
