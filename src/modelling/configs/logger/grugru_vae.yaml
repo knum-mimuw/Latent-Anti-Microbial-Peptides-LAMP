@@ -4,3 +4,4 @@ trainer:
     init_args:
       project: pszmk/LAMP
       api_token: ${oc.env:NEPTUNE_API_TOKEN}
+      name: grugru_vae
