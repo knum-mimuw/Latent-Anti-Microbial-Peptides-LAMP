@@ -1,7 +1,0 @@
-trainer:
-  logger:
-  - class_path: modelling.models.utils.neptune.NeptuneLogger
-    init_args:
-      project: pszmk/LAMP
-      api_token: ${oc.env:NEPTUNE_API_TOKEN}
-      name: ${oc.env:NEPTUNE_RUN_NAME}
