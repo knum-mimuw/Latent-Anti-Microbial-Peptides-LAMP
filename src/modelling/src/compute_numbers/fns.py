@@ -1,39 +1,26 @@
-"""Functions for computing losses."""
-from typing import Any, Dict
+"""Loss computation functions for use with LossManager."""
+
 import torch
+import torch.nn as nn
 
 
-def compute_losses(
-    losses: Dict[str, Dict[str, Any]],
-    outputs: Dict[str, Any],
-    batch: Dict[str, Any],
-    device: torch.device,
-) -> Dict[str, torch.Tensor]:
-    """Compute all configured losses."""
-    loss_dict = {}
-    total_loss = torch.tensor(0.0, device=device)
+def kl_gaus_unitgauss(mean: torch.Tensor, log_std: torch.Tensor) -> torch.Tensor:
+    """
+    Compute KL divergence between Gaussian posterior and unit Gaussian prior.
 
-    for loss_name, loss_info in losses.items():
-        loss_value = loss_info["fn"](outputs, batch)
-        if isinstance(loss_value, dict):
-            # If loss returns a dict, extract the main loss value
-            main_loss = loss_value.get(
-                "loss", loss_value.get("total", next(iter(loss_value.values())))
-            )
-            loss_dict.update({f"{k}_{loss_name}": v for k, v in loss_value.items()})
-            loss_value = main_loss
-        else:
-            loss_dict[f"{loss_name}"] = loss_value
+    KL(q(z|x) || p(z)) where:
+    - q(z|x) ~ N(mean, std^2) is the posterior (encoder output)
+    - p(z) ~ N(0, 1) is the unit Gaussian prior
 
-        weighted_loss = loss_value * loss_info["weight"]
-        total_loss = total_loss + weighted_loss
+    Formula: KL = 0.5 * sum(mean^2 + std^2 - 1 - 2*log_std)
 
-    loss_dict["loss"] = total_loss
-    return loss_dict
+    Args:
+        mean: Latent mean [batch_size, latent_dim]
+        log_std: Latent log standard deviation [batch_size, latent_dim]
 
-
-
-
-
-
-
+    Returns:
+        KL divergence (scalar tensor)
+    """
+    std = torch.exp(log_std)
+    kl_per_sample = 0.5 * (mean.pow(2) + std.pow(2) - 1 - 2 * log_std).sum(dim=-1)
+    return kl_per_sample.mean()  # Return mean over batch for loss
