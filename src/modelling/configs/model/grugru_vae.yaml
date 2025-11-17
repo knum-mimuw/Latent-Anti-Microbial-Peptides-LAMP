@@ -1,0 +1,57 @@
+# GRU VAE Model Configuration
+model:
+  class_path: modelling.src.metamodule.metamodule.MetaModule
+  init_args:
+    config:
+      # Model configuration
+      model_class_path: modelling.src.models.aes.simpletons.grugru.GRUVAE
+      model_kwargs:
+        embedding:
+          num_embeddings: 21  # 20 amino acids + padding token
+          embedding_dim: 100
+          padding_idx: 0
+        latent_dim: 64
+        encoder:
+          input_size: 100  # Must match embedding_dim
+          batch_first: true
+          hidden_size: 128
+          num_layers: 2
+          bidirectional: true
+          dropout: 0.1
+        decoder:
+          input_size: 100  # Must match embedding_dim
+          batch_first: true
+          hidden_size: 128
+          num_layers: 2
+          bidirectional: false
+          dropout: 0.1
+      
+      # Loss configuration
+      loss_manager:
+        losses:
+          # Reconstruction loss (CrossEntropyLoss)
+          - loss_class_path: torch.nn.functional.cross_entropy
+            loss_kwargs:
+              reduction: mean
+            name: reconstruction
+            weight: 1.0
+            batch_key_mapping:
+              input_ids: target
+            output_key_mapping:
+              reconstruction: input
+          
+          # KL divergence loss
+          - loss_class_path: modelling.src.compute_numbers.fns.kl_gaus_unitgauss
+            name: kl_divergence
+            weight: 0.001  # KL weight (beta-VAE)
+            batch_key_mapping: {}
+            output_key_mapping:
+              mean: mean
+              log_std: log_std
+      
+      # Optimizer configuration
+      optimizer:
+        optimizer_class_path: torch.optim.Adam
+        optimizer_kwargs:
+          lr: 0.001
+          weight_decay: 0.0001

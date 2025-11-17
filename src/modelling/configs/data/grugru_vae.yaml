@@ -1,46 +1,32 @@
-# Configuration for loading LAMP datasets from Hugging Face
-# Dataset: pszmk/LAMP-datasets
-# Login using e.g. `huggingface-cli login` to access this dataset
-
 data:
-  class_path: modelling.datamodules.seq_dm.SequenceDataModule
+  class_path: modelling.src.datamodules.seq_dm.SequenceDataModule
   init_args:
     config:
       train_datasets:
         - name: "train"
           cfg:
             path: "pszmk/LAMP-datasets"
-            columns: ["sequence"]
             split: "train"
-            streaming: false
+            streaming: true
 
       val_datasets:
         - name: "val"
           cfg:
             path: "pszmk/LAMP-datasets"
-            columns: ["sequence"]
             split: "validation"
-            streaming: false
-
+            streaming: true
 
       train_dataloader:
         batch_size: 32
-        shuffle: true
         num_workers: 4
         pin_memory: true
+        shuffle: true
         drop_last: false
 
       val_dataloader:
         batch_size: 32
-        shuffle: false
         num_workers: 4
         pin_memory: true
-        drop_last: false
-
-      test_dataloader:
-        batch_size: 32
         shuffle: false
-        num_workers: 4
-        pin_memory: true
         drop_last: false
 
