@@ -12,6 +12,7 @@ A data module for handling sequence datasets, particularly from Hugging Face dat
 - **Multiple Datasets**: Support for combining multiple datasets
 - **Flexible Configuration**: Configure train/val/test splits independently
 - **DataLoader Configuration**: Customizable batch size, workers, etc.
+- **Built-in Preprocessing**: Optional tokenization, padding, and tensor conversion
 
 ### Configuration
 
@@ -21,6 +22,7 @@ A data module for handling sequence datasets, particularly from Hugging Face dat
 - `val_datasets`: Optional list of `HFDatasetItemConfig` for validation data
 - `test_datasets`: Optional list of `HFDatasetItemConfig` for test data
 - `dataloader`: `DataLoaderConfig` for DataLoader settings
+- `preprocessing`: Optional `SequencePreprocessingConfig` to tokenize and pad sequences
 
 #### HFDatasetConfig
 
@@ -51,6 +53,20 @@ DataLoader configuration:
 - `shuffle`: Shuffle training data (default: True)
 - `drop_last`: Drop last incomplete batch (default: False)
 - `**kwargs`: Additional DataLoader arguments
+
+#### SequencePreprocessingConfig
+
+Sequence preprocessing configuration:
+
+- `sequence_field`: Column containing raw sequences (default: `sequence`)
+- `target_field`: Optional column for target sequences; if omitted, targets reuse inputs
+- `input_ids_key` / `target_key`: Keys for tokenized tensors (defaults: `input_ids`, `target`)
+- `vocab`: Mapping from tokens to integer IDs
+- `max_length`: Fixed length to pad or truncate sequences
+- `pad_token_id` / `unk_token_id`: IDs for padding and unknown tokens
+- `padding_side`: Pad on `right` (default) or `left`
+- `remove_columns`: Drop original columns after tokenization (default: True)
+- `num_proc`: Optional parallel workers for `dataset.map`
 
 ### Usage Example
 
