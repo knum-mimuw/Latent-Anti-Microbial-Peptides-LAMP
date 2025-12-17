@@ -6,6 +6,7 @@ from .seq_dm import (
     HFDatasetConfig,
     HFDatasetItemConfig,
     DataLoaderConfig,
+    SequencePreprocessingConfig,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "HFDatasetConfig",
     "HFDatasetItemConfig",
     "DataLoaderConfig",
+    "SequencePreprocessingConfig",
 ]

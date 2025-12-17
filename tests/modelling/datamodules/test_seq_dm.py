@@ -7,7 +7,7 @@ import pytest
 import torch
 import yaml
 from pathlib import Path
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 
 from modelling.datamodules import (
     SequenceDataModule,
@@ -15,6 +15,7 @@ from modelling.datamodules import (
     HFDatasetConfig,
     HFDatasetItemConfig,
     DataLoaderConfig,
+    SequencePreprocessingConfig,
 )
 
 
@@ -181,6 +182,72 @@ def test_real_dataset_integration():
             break
 
     assert batch_count > 0
+
+
+def test_preprocessing_tokenization_and_padding():
+    """Ensure sequences are tokenized, padded, and converted to tensors."""
+
+    preprocessing = SequencePreprocessingConfig(
+        vocab={"A": 1, "B": 2, "C": 3},
+        max_length=4,
+        pad_token_id=0,
+        unk_token_id=99,
+        sequence_field="sequence",
+        target_key="target",
+    )
+    dm = SequenceDataModule(
+        SequenceDataModuleConfig(
+            train_datasets=[
+                HFDatasetItemConfig(name="dummy", cfg=HFDatasetConfig(path="dummy"))
+            ],
+            preprocessing=preprocessing,
+        )
+    )
+
+    dataset = Dataset.from_dict({"sequence": ["AB", "ACCA", "XD"]})
+
+    processed = dm.prepare_dataset(dataset)
+
+    sample = processed[0]
+    assert isinstance(sample["input_ids"], torch.Tensor)
+    assert sample["input_ids"].tolist() == [1, 2, 0, 0]
+    assert sample["target"].tolist() == [1, 2, 0, 0]
+
+    unknown_sample = processed[2]
+    assert unknown_sample["input_ids"].tolist() == [99, 2, 0, 0]
+
+
+def test_dataloader_returns_tensor_batches():
+    """DataLoader should yield dictionaries of tensors with expected shapes."""
+
+    preprocessing = SequencePreprocessingConfig(
+        vocab={"A": 1, "B": 2},
+        max_length=3,
+        pad_token_id=0,
+        unk_token_id=99,
+        sequence_field="sequence",
+        target_key="target",
+    )
+
+    config = SequenceDataModuleConfig(
+        train_datasets=[
+            HFDatasetItemConfig(name="dummy", cfg=HFDatasetConfig(path="dummy"))
+        ],
+        train_dataloader=DataLoaderConfig(batch_size=2, shuffle=False),
+        preprocessing=preprocessing,
+    )
+
+    dm = SequenceDataModule(config)
+
+    dataset = Dataset.from_dict({"sequence": ["AAA", "BA", "AB"]})
+
+    dm.train_dataset = dm.prepare_dataset(dataset)
+    dl = dm.train_dataloader()
+
+    batch = next(iter(dl))
+    assert set(batch.keys()) == {"input_ids", "target"}
+    assert batch["input_ids"].shape == torch.Size([2, 3])
+    assert batch["target"].shape == torch.Size([2, 3])
 
 
 def test_dataset_merging():
