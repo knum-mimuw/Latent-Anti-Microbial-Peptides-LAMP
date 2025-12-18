@@ -127,6 +127,7 @@ class GRUDecoder(nn.Module):
             l=self.config.decoder.num_layers,
             h=self.config.decoder.hidden_size,
         )  # [num_layers, batch_size, hidden_dim]
+        h_0 = h_0.contiguous()
 
         # Teacher forcing: use input sequence
         embeddings = self.embedding(input)  # [batch_size, seq_len, embedding_dim]
@@ -139,11 +140,11 @@ class GRUDecoder(nn.Module):
 class GRUVAE(nn.Module):
     """GRU encoder-decoder VAE."""
 
-    def __init__(self, config: GRUVAEConfig):
+    def __init__(self, config: Optional[GRUVAEConfig] = None, **kwargs: Any):
         super().__init__()
-        self.config = config
-        self.encoder = GRUEncoder(config)
-        self.decoder = GRUDecoder(config)
+        self.config = config or GRUVAEConfig(**kwargs)
+        self.encoder = GRUEncoder(self.config)
+        self.decoder = GRUDecoder(self.config)
 
     def _sample_gaussian(
         self, mean: torch.Tensor, log_std: torch.Tensor
@@ -178,8 +179,25 @@ class GRUVAE(nn.Module):
                 - mean: Latent mean [batch_size, latent_dim]
                 - log_std: Latent log standard deviation [batch_size, latent_dim]
         """
+        if isinstance(input_ids, dict):
+            batch = input_ids
+            input_ids = batch.get("input_ids")
+            if input is None:
+                input = batch.get("input")
+            if input_ids is None:
+                raise KeyError(
+                    "GRUVAE received a batch dict but it did not contain the required "
+                    "'input_ids' tensor. Ensure your datamodule/tokenizer produces an "
+                    "'input_ids' key (e.g. enable SequenceDataModule preprocessing)."
+                )
+
+        if input_ids.dtype != torch.long:
+            input_ids = input_ids.long()
+
         if input is None:
             input = input_ids
+        elif input.dtype != torch.long:
+            input = input.long()
 
         # Encode to latent parameters
         mean, log_std = self.encoder(input_ids)

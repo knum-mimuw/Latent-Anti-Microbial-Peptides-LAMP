@@ -40,6 +40,8 @@ Losses are computed via `LossManager` during each step:
 
 ### Model Interface
 
+`MetaModule` will pass batches to the wrapped model as keyword arguments when possible (matching the model's forward signature), and will fall back to passing the full batch as a single positional argument for models that expect a dict-like batch.
+
 The wrapped model's forward method should accept keyword arguments from the batch and return a dictionary:
 
 ```python

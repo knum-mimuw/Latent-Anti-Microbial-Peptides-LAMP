@@ -1,8 +1,17 @@
-from typing import Dict, Iterable, List, Optional, Union
+from __future__ import annotations
+
+from typing import Dict, Iterable, Iterator, List, Optional, Union
 from pytorch_lightning import LightningDataModule
+from pytorch_lightning.utilities.rank_zero import rank_zero_warn
 from torch.utils.data import DataLoader
+from torch.utils.data import IterableDataset as TorchIterableDataset
 from datasets import load_dataset, concatenate_datasets, Dataset
 from pydantic import BaseModel, Field, ConfigDict
+
+try:
+    from datasets import IterableDataset as HFIterableDataset
+except Exception:  # pragma: no cover - optional import for older/newer datasets versions
+    HFIterableDataset = None
 
 
 class HFDatasetConfig(BaseModel):
@@ -28,6 +37,14 @@ class HFDatasetItemConfig(BaseModel):
 
     name: str = Field(..., description="Name for this dataset")
     cfg: HFDatasetConfig = Field(..., description="Dataset configuration")
+    num_examples: Optional[int] = Field(
+        None,
+        description=(
+            "Optional number of examples in this split. Useful for Hugging Face streaming datasets "
+            "(IterableDataset) where tqdm/Lightning can't infer an epoch length automatically."
+        ),
+        ge=1,
+    )
 
 
 class DataLoaderConfig(BaseModel):
@@ -123,7 +140,25 @@ class SequenceDataModule(LightningDataModule):
         self.train_dataset: Optional[Dataset] = None
         self.val_datasets: Optional[Dict[str, Dataset]] = None
         self.test_datasets: Optional[Dict[str, Dataset]] = None
+        self.train_num_examples: Optional[int] = None
+        self.val_num_examples: Optional[Dict[str, int]] = None
+        self.test_num_examples: Optional[Dict[str, int]] = None
         self.preprocessing_config = config.preprocessing
+
+    class _IterableDatasetWithLen(TorchIterableDataset):
+        def __init__(self, dataset: TorchIterableDataset, num_examples: int):
+            super().__init__()
+            self._dataset = dataset
+            self._num_examples = int(num_examples)
+
+        def __iter__(self) -> Iterator[object]:
+            return iter(self._dataset)
+
+        def __len__(self) -> int:
+            return self._num_examples
+
+        def __getattr__(self, item: str):
+            return getattr(self._dataset, item)
 
     @staticmethod
     def _pad_sequence(
@@ -197,11 +232,14 @@ class SequenceDataModule(LightningDataModule):
 
         remove_columns = dataset.column_names if config.remove_columns else None
 
-        processed = dataset.map(
-            _tokenize_example,
-            remove_columns=remove_columns,
-            num_proc=config.num_proc,
-        )
+        map_kwargs = {"remove_columns": remove_columns}
+        if HFIterableDataset is None or not isinstance(dataset, HFIterableDataset):
+            map_kwargs["num_proc"] = config.num_proc
+
+        processed = dataset.map(_tokenize_example, **map_kwargs)
+
+        if HFIterableDataset is not None and isinstance(processed, HFIterableDataset):
+            return processed.with_format("torch")
 
         return processed.with_format("torch", columns=output_keys)
 
@@ -216,29 +254,112 @@ class SequenceDataModule(LightningDataModule):
             ds = ds[cfg.split]
         return ds
 
-    def _merge_datasets(self, cfgs: List[HFDatasetItemConfig]) -> Dataset:
-        """Concatenate multiple HF datasets into one."""
-        datasets = [self._load_dataset(item.cfg) for item in cfgs]
-        return concatenate_datasets(datasets) if len(datasets) > 1 else datasets[0]
+    @staticmethod
+    def _infer_num_examples(dataset: Dataset, split: Optional[str]) -> Optional[int]:
+        info = getattr(dataset, "info", None) or getattr(dataset, "_info", None)
+        if info is None:
+            return None
+
+        splits = getattr(info, "splits", None)
+        if not splits:
+            return None
+
+        split_name = split
+        if split_name is None:
+            ds_split = getattr(dataset, "split", None) or getattr(dataset, "_split", None)
+            if ds_split is not None:
+                split_name = str(ds_split)
+
+        if not split_name:
+            return None
+
+        split_info = splits.get(split_name)
+        num_examples = getattr(split_info, "num_examples", None) if split_info is not None else None
+        if num_examples is None:
+            return None
+
+        try:
+            num_examples_int = int(num_examples)
+        except (TypeError, ValueError):
+            return None
+        return num_examples_int if num_examples_int > 0 else None
+
+    @classmethod
+    def _maybe_wrap_iterable_with_len(cls, dataset: Dataset, num_examples: Optional[int]) -> Dataset:
+        if num_examples is None:
+            return dataset
+        if not isinstance(dataset, TorchIterableDataset):
+            return dataset
+        try:
+            len(dataset)  # type: ignore[arg-type]
+        except TypeError:
+            return cls._IterableDatasetWithLen(dataset, num_examples)
+        return dataset
+
+    def _merge_datasets(self, cfgs: List[HFDatasetItemConfig]) -> tuple[Dataset, Optional[int]]:
+        """Concatenate multiple HF datasets into one (and infer its example count when possible)."""
+        datasets: List[Dataset] = []
+        lengths: List[Optional[int]] = []
+        for item in cfgs:
+            dataset = self._load_dataset(item.cfg)
+            datasets.append(dataset)
+            lengths.append(item.num_examples or self._infer_num_examples(dataset, item.cfg.split))
+
+        merged = concatenate_datasets(datasets) if len(datasets) > 1 else datasets[0]
+        if any(length is None for length in lengths):
+            return merged, None
+        return merged, sum(length for length in lengths if length is not None)
 
     def setup(self, stage: Optional[str] = None):
         """Load datasets and prepare them for PyTorch."""
         if stage in (None, "fit"):
-            self.train_dataset = self.prepare_dataset(
-                self._merge_datasets(self.config.train_datasets)
+            train_dataset, train_num_examples = self._merge_datasets(self.config.train_datasets)
+            self.train_num_examples = train_num_examples
+            self.train_dataset = self.prepare_dataset(train_dataset)
+            self.train_dataset = self._maybe_wrap_iterable_with_len(
+                self.train_dataset, self.train_num_examples
             )
 
             if self.config.val_datasets:
-                self.val_datasets = {
-                    item.name: self.prepare_dataset(self._load_dataset(item.cfg))
-                    for item in self.config.val_datasets
-                }
+                self.val_datasets = {}
+                self.val_num_examples = {}
+                for item in self.config.val_datasets:
+                    dataset = self._load_dataset(item.cfg)
+                    num_examples = item.num_examples or self._infer_num_examples(
+                        dataset, item.cfg.split
+                    )
+                    dataset = self.prepare_dataset(dataset)
+                    dataset = self._maybe_wrap_iterable_with_len(dataset, num_examples)
+                    self.val_datasets[item.name] = dataset
+                    if num_examples is not None:
+                        self.val_num_examples[item.name] = num_examples
 
         if stage in (None, "test") and self.config.test_datasets:
-            self.test_datasets = {
-                item.name: self.prepare_dataset(self._load_dataset(item.cfg))
-                for item in self.config.test_datasets
-            }
+            self.test_datasets = {}
+            self.test_num_examples = {}
+            for item in self.config.test_datasets:
+                dataset = self._load_dataset(item.cfg)
+                num_examples = item.num_examples or self._infer_num_examples(
+                    dataset, item.cfg.split
+                )
+                dataset = self.prepare_dataset(dataset)
+                dataset = self._maybe_wrap_iterable_with_len(dataset, num_examples)
+                self.test_datasets[item.name] = dataset
+                if num_examples is not None:
+                    self.test_num_examples[item.name] = num_examples
+
+    @staticmethod
+    def _strip_shuffle_for_iterable(dataset: Dataset, dl_kwargs: Dict[str, object]) -> Dict[str, object]:
+        """Torch DataLoader forbids `shuffle` when the dataset is iterable/streaming."""
+
+        if isinstance(dataset, TorchIterableDataset) and "shuffle" in dl_kwargs:
+            rank_zero_warn(
+                "DataLoader received `shuffle=...` but the dataset is an IterableDataset (e.g. "
+                "Hugging Face streaming). Dropping `shuffle` to satisfy torch DataLoader constraints."
+            )
+            dl_kwargs = dict(dl_kwargs)
+            dl_kwargs.pop("shuffle", None)
+        return dl_kwargs
 
     def train_dataloader(self) -> DataLoader:
         """Create training DataLoader."""
@@ -247,6 +368,9 @@ class SequenceDataModule(LightningDataModule):
             if self.config.train_dataloader
             else {}
         )
+        if self.train_dataset is None:
+            raise ValueError("train_dataset is not set; did you forget to call setup('fit')?")
+        dl_kwargs = self._strip_shuffle_for_iterable(self.train_dataset, dl_kwargs)
         return DataLoader(self.train_dataset, **dl_kwargs)
 
     def val_dataloader(self) -> Optional[Dict[str, DataLoader]]:
@@ -259,11 +383,11 @@ class SequenceDataModule(LightningDataModule):
             if self.config.val_dataloader
             else {}
         )
-        # Override shuffle for validation
+        # Override shuffle for validation (and drop it entirely for iterable datasets).
         dl_kwargs.update(shuffle=False)
 
         return {
-            name: DataLoader(dataset, **dl_kwargs)
+            name: DataLoader(dataset, **self._strip_shuffle_for_iterable(dataset, dl_kwargs))
             for name, dataset in self.val_datasets.items()
         }
 
@@ -281,6 +405,6 @@ class SequenceDataModule(LightningDataModule):
         dl_kwargs.update(shuffle=False, drop_last=False)
 
         return {
-            name: DataLoader(dataset, **dl_kwargs)
+            name: DataLoader(dataset, **self._strip_shuffle_for_iterable(dataset, dl_kwargs))
             for name, dataset in self.test_datasets.items()
         }

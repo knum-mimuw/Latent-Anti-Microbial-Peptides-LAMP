@@ -42,6 +42,7 @@ Named dataset item:
 
 - `name`: Name for this dataset (required)
 - `cfg`: `HFDatasetConfig` for dataset configuration (required)
+- `num_examples`: Optional number of examples in the split; enables correct tqdm totals for streaming datasets
 
 #### DataLoaderConfig
 
@@ -67,6 +68,8 @@ Sequence preprocessing configuration:
 - `padding_side`: Pad on `right` (default) or `left`
 - `remove_columns`: Drop original columns after tokenization (default: True)
 - `num_proc`: Optional parallel workers for `dataset.map`
+
+Embedding-based models (e.g. GRU/Transformer token embeddings) typically expect an `input_ids` tensor. To produce it from raw `sequence` strings, enable `preprocessing` and provide a `vocab`.
 
 ### Usage Example
 
@@ -103,6 +106,29 @@ dm = SequenceDataModule(config)
 trainer.fit(model, dm)
 ```
 
+### Preprocessing Example
+
+```python
+from datamodules import (
+    SequenceDataModule,
+    SequenceDataModuleConfig,
+    SequencePreprocessingConfig,
+    HFDatasetItemConfig,
+    HFDatasetConfig,
+    DataLoaderConfig,
+)
+
+aa_vocab = {aa: i + 1 for i, aa in enumerate("ACDEFGHIKLMNPQRSTVWY")}
+
+config = SequenceDataModuleConfig(
+    train_datasets=[HFDatasetItemConfig(name="train", cfg=HFDatasetConfig(path="...", split="train"))],
+    train_dataloader=DataLoaderConfig(batch_size=32),
+    preprocessing=SequencePreprocessingConfig(vocab=aa_vocab, max_length=256, pad_token_id=0, unk_token_id=0),
+)
+
+dm = SequenceDataModule(config)
+```
+
 ### Multiple Datasets
 
 You can combine multiple datasets:
@@ -124,4 +150,3 @@ config = SequenceDataModuleConfig(
 ```
 
 The data module will concatenate datasets with the same split.
-

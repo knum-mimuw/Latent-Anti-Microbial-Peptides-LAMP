@@ -1,7 +1,16 @@
 trainer:
   logger:
-  - class_path: modelling.src.utils.neptune.NeptuneLogger
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
-      project: pszmk/LAMP
-      api_token: ${oc.env:NEPTUNE_API_TOKEN}
+      project: lamp
       name: grugru_vae
+      save_dir: wandb
+      offline: false
+      log_model: false
+
+  # logger:
+  #   class_path: modelling.src.utils.neptune.NeptuneLogger
+  #   init_args:
+  #     project: LAMP
+  #     api_token: ${oc.env:NEPTUNE_API_TOKEN}
+  #     name: grugru_vae

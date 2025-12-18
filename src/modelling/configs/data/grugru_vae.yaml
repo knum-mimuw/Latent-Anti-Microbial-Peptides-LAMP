@@ -7,26 +7,56 @@ data:
           cfg:
             path: "pszmk/LAMP-datasets"
             split: "train"
-            streaming: true
+            streaming: false
 
       val_datasets:
         - name: "val"
           cfg:
             path: "pszmk/LAMP-datasets"
             split: "validation"
-            streaming: true
+            streaming: false
 
       train_dataloader:
-        batch_size: 32
-        num_workers: 4
+        batch_size: 128
+        num_workers: 16
         pin_memory: true
         shuffle: true
         drop_last: false
 
       val_dataloader:
-        batch_size: 32
-        num_workers: 4
+        batch_size: 128
+        num_workers: 16
         pin_memory: true
         shuffle: false
         drop_last: false
 
+      preprocessing:
+        # Convert raw amino-acid sequences to integer token IDs expected by embedding-based models.
+        sequence_field: sequence
+        input_ids_key: input_ids
+        target_key: target
+        max_length: 256
+        pad_token_id: 0
+        unk_token_id: 0
+        remove_columns: true
+        vocab:
+          A: 1
+          C: 2
+          D: 3
+          E: 4
+          F: 5
+          G: 6
+          H: 7
+          I: 8
+          K: 9
+          L: 10
+          M: 11
+          N: 12
+          P: 13
+          Q: 14
+          R: 15
+          S: 16
+          T: 17
+          V: 18
+          W: 19
+          Y: 20

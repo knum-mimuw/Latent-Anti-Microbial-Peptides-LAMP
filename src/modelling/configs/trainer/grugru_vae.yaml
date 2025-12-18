@@ -1,11 +1,20 @@
 trainer:
   max_epochs: 100
   accelerator: auto
-  devices: auto
+  devices: [0, 1]
   precision: 16-mixed
   gradient_clip_val: 1.0
   log_every_n_steps: 10
-  val_check_interval: 0.5
+  # IterableDataset (HF streaming) requires val_check_interval to be 1.0 or an int (k batches).
+  val_check_interval: 1.0
   enable_checkpointing: true
   enable_progress_bar: true
   enable_model_summary: true
+  logger:
+    class_path: pytorch_lightning.loggers.wandb.WandbLogger
+    init_args:
+      project: lamp
+      name: grugru_vae
+      save_dir: wandb
+      offline: false
+      log_model: false

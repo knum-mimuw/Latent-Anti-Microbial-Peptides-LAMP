@@ -1,5 +1,5 @@
-import torch
-from typing import Any, Optional, Iterable
+import importlib
+from typing import Any, Optional
 
 
 def get_obj_from_import_path(
@@ -9,10 +9,10 @@ def get_obj_from_import_path(
     module_name, obj_name = import_path.rsplit(".", 1)
     if validation_prefix and not obj_name.startswith(validation_prefix):
         raise ValueError(
-            f"Object name {obj_name} does not start with {validation_prefix}. Available objects: {getattr(__import__(module_name), '__all__')}"
+            f"Object name {obj_name} does not start with {validation_prefix}."
         )
-    obj = getattr(__import__(module_name), obj_name)
-    return obj
+    module = importlib.import_module(module_name)
+    return getattr(module, obj_name)
 
 
 def load_model_from_huggingface(

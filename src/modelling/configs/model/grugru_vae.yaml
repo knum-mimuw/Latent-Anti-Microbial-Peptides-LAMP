@@ -10,18 +10,18 @@ model:
           num_embeddings: 21  # 20 amino acids + padding token
           embedding_dim: 100
           padding_idx: 0
-        latent_dim: 64
+        latent_dim: 128
         encoder:
           input_size: 100  # Must match embedding_dim
           batch_first: true
-          hidden_size: 128
+          hidden_size: 256
           num_layers: 2
           bidirectional: true
           dropout: 0.1
         decoder:
           input_size: 100  # Must match embedding_dim
           batch_first: true
-          hidden_size: 128
+          hidden_size: 256
           num_layers: 2
           bidirectional: false
           dropout: 0.1
@@ -30,9 +30,10 @@ model:
       loss_manager:
         losses:
           # Reconstruction loss (CrossEntropyLoss)
-          - loss_class_path: torch.nn.functional.cross_entropy
+          - loss_class_path: modelling.src.metamodule.losses.sequence_cross_entropy
             loss_kwargs:
               reduction: mean
+              ignore_index: 0
             name: reconstruction
             weight: 1.0
             batch_key_mapping:

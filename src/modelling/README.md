@@ -84,6 +84,10 @@ trainer = Trainer(callbacks=[metrics_callback])
 trainer.fit(module, SequenceDataModule(data_config))
 ```
 
+### LightningCLI note
+
+The modelling package also exposes a PyTorch Lightning `LightningCLI` entrypoint. It saves the resolved CLI configuration to `lightning_cli_config.yaml` (instead of `config.yaml`) to avoid clashing with the repository-level `config.yaml`.
+
 ## Module Structure
 
 ```
@@ -152,4 +156,3 @@ This enables configuration-driven training without code changes.
 ## Examples
 
 See the configuration files in `configs/` for complete examples.
-
