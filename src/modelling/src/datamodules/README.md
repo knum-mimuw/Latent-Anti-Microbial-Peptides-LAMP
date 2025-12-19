@@ -123,7 +123,17 @@ aa_vocab = {aa: i + 1 for i, aa in enumerate("ACDEFGHIKLMNPQRSTVWY")}
 config = SequenceDataModuleConfig(
     train_datasets=[HFDatasetItemConfig(name="train", cfg=HFDatasetConfig(path="...", split="train"))],
     train_dataloader=DataLoaderConfig(batch_size=32),
-    preprocessing=SequencePreprocessingConfig(vocab=aa_vocab, max_length=256, pad_token_id=0, unk_token_id=0),
+    # Recommended special tokens:
+    # PAD=0 (ignored in CE), UNK=1, BOS=2, EOS=3, amino acids from 4..
+    preprocessing=SequencePreprocessingConfig(
+        vocab=aa_vocab,
+        max_length=256,
+        pad_token_id=0,
+        unk_token_id=1,
+        bos_token_id=2,
+        eos_token_id=3,
+        decoder_input_key="input",
+    ),
 )
 
 dm = SequenceDataModule(config)

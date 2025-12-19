@@ -7,7 +7,7 @@ data:
           cfg:
             path: "pszmk/LAMP-datasets"
             split: "train"
-            streaming: false
+            streaming: true
 
       val_datasets:
         - name: "val"
@@ -34,29 +34,35 @@ data:
         # Convert raw amino-acid sequences to integer token IDs expected by embedding-based models.
         sequence_field: sequence
         input_ids_key: input_ids
+        # Provide shifted teacher-forcing inputs for the decoder under the key expected by GRUVAE.forward(..., input=...)
+        decoder_input_key: input
         target_key: target
         max_length: 256
+        # Special tokens (recommended):
+        # PAD=0 (ignored in CE), UNK=1, BOS=2, EOS=3, amino acids from 4..
         pad_token_id: 0
-        unk_token_id: 0
+        unk_token_id: 1
+        bos_token_id: 2
+        eos_token_id: 3
         remove_columns: true
         vocab:
-          A: 1
-          C: 2
-          D: 3
-          E: 4
-          F: 5
-          G: 6
-          H: 7
-          I: 8
-          K: 9
-          L: 10
-          M: 11
-          N: 12
-          P: 13
-          Q: 14
-          R: 15
-          S: 16
-          T: 17
-          V: 18
-          W: 19
-          Y: 20
+          A: 4
+          C: 5
+          D: 6
+          E: 7
+          F: 8
+          G: 9
+          H: 10
+          I: 11
+          K: 12
+          L: 13
+          M: 14
+          N: 15
+          P: 16
+          Q: 17
+          R: 18
+          S: 19
+          T: 20
+          V: 21
+          W: 22
+          Y: 23

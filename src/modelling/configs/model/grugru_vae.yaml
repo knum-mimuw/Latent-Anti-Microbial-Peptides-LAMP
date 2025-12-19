@@ -7,19 +7,19 @@ model:
       model_class_path: modelling.src.models.aes.simpletons.grugru.GRUVAE
       model_kwargs:
         embedding:
-          num_embeddings: 21  # 20 amino acids + padding token
-          embedding_dim: 100
+          num_embeddings: 24  # 20 amino acids + padding token
+          embedding_dim: 128
           padding_idx: 0
         latent_dim: 128
         encoder:
-          input_size: 100  # Must match embedding_dim
+          input_size: 128  # Must match embedding_dim
           batch_first: true
           hidden_size: 256
           num_layers: 2
           bidirectional: true
           dropout: 0.1
         decoder:
-          input_size: 100  # Must match embedding_dim
+          input_size: 128  # Must match embedding_dim
           batch_first: true
           hidden_size: 256
           num_layers: 2
@@ -37,7 +37,7 @@ model:
             name: reconstruction
             weight: 1.0
             batch_key_mapping:
-              input_ids: target
+              target: target
             output_key_mapping:
               reconstruction: input
           

@@ -80,9 +80,30 @@ class SequencePreprocessingConfig(BaseModel):
     target_key: Optional[str] = Field(
         "target", description="Key to store tokenized targets"
     )
+    decoder_input_key: Optional[str] = Field(
+        None,
+        description=(
+            "Optional key to store shifted decoder inputs for teacher forcing (e.g. 'input'). "
+            "When set, a decoder input sequence will be created as [BOS] + target[:-1]."
+        ),
+    )
     max_length: int = Field(256, description="Fixed sequence length after padding")
     pad_token_id: int = Field(0, description="Token ID used for padding")
     unk_token_id: int = Field(0, description="Token ID used for unknown tokens")
+    bos_token_id: Optional[int] = Field(
+        None,
+        description=(
+            "Optional BOS token ID used when creating shifted decoder inputs. "
+            "If omitted, pad_token_id is used as BOS."
+        ),
+    )
+    eos_token_id: Optional[int] = Field(
+        None,
+        description=(
+            "Optional EOS token ID appended to sequences before padding/truncation. "
+            "Useful when training next-token prediction with shifted teacher forcing."
+        ),
+    )
     vocab: Dict[str, int] = Field(
         ..., description="Mapping from tokens (e.g., amino acids) to integer IDs"
     )
@@ -188,8 +209,13 @@ class SequenceDataModule(LightningDataModule):
         max_length = self.preprocessing_config.max_length
         pad_token_id = self.preprocessing_config.pad_token_id
         padding_side = self.preprocessing_config.padding_side
+        eos_token_id = self.preprocessing_config.eos_token_id
 
         tokens = [vocab.get(token, unk_token_id) for token in sequence]
+        if eos_token_id is not None:
+            if max_length < 1:
+                raise ValueError("max_length must be >= 1 when eos_token_id is set")
+            tokens = tokens[: max_length - 1] + [int(eos_token_id)]
         return self._pad_sequence(tokens, max_length, pad_token_id, padding_side)
 
     def prepare_dataset(self, dataset: Dataset) -> Dataset:
@@ -202,10 +228,12 @@ class SequenceDataModule(LightningDataModule):
         output_keys: List[str] = [config.input_ids_key]
         if config.target_key is not None:
             output_keys.append(config.target_key)
+        if config.decoder_input_key is not None:
+            output_keys.append(config.decoder_input_key)
 
         def _tokenize_example(example: Dict[str, str]) -> Dict[str, List[int]]:
             input_tokens = self._tokenize_sequence(example[config.sequence_field])
-            example_dict = {config.input_ids_key: input_tokens}
+            example_dict: Dict[str, List[int]] = {config.input_ids_key: input_tokens}
 
             if config.target_key is not None:
                 if config.target_field is None:
@@ -227,6 +255,24 @@ class SequenceDataModule(LightningDataModule):
                         )
 
                 example_dict[config.target_key] = target_tokens
+
+                if config.decoder_input_key is not None:
+                    bos_token_id = (
+                        config.pad_token_id
+                        if config.bos_token_id is None
+                        else int(config.bos_token_id)
+                    )
+                    if not target_tokens:
+                        decoder_input_tokens = []
+                    else:
+                        decoder_input_tokens = [bos_token_id] + list(target_tokens[:-1])
+                    decoder_input_tokens = self._pad_sequence(
+                        decoder_input_tokens,
+                        config.max_length,
+                        config.pad_token_id,
+                        config.padding_side,
+                    )
+                    example_dict[config.decoder_input_key] = decoder_input_tokens
 
             return example_dict
 

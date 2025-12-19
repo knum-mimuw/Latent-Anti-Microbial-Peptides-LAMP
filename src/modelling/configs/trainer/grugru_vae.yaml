@@ -10,6 +10,14 @@ trainer:
   enable_checkpointing: true
   enable_progress_bar: true
   enable_model_summary: true
+  # Optional: KL warmup to reduce posterior collapse (requires the callback below).
+  callbacks:
+    - class_path: modelling.src.callbacks.loss_weight_warmup.LinearLossWeightWarmup
+      init_args:
+        loss_name: kl_divergence
+        start_weight: 0.0
+        end_weight: 0.001
+        warmup_steps: 10000
   logger:
     class_path: pytorch_lightning.loggers.wandb.WandbLogger
     init_args:
