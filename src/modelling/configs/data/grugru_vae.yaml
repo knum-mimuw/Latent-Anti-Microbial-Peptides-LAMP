@@ -7,7 +7,7 @@ data:
           cfg:
             path: "pszmk/LAMP-datasets"
             split: "train"
-            streaming: true
+            streaming: false
 
       val_datasets:
         - name: "val"
