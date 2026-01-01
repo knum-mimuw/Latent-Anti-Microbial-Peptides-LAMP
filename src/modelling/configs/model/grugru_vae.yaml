@@ -4,28 +4,30 @@ model:
   init_args:
     config:
       # Model configuration
-      model_class_path: modelling.src.models.aes.simpletons.grugru.GRUVAE
-      model_kwargs:
-        embedding:
-          num_embeddings: 21  # 20 amino acids + padding token
-          embedding_dim: 100
-          padding_idx: 0
-        latent_dim: 64
-        encoder:
-          input_size: 100  # Must match embedding_dim
-          batch_first: true
-          hidden_size: 128
-          num_layers: 2
-          bidirectional: true
-          dropout: 0.1
-        decoder:
-          input_size: 100  # Must match embedding_dim
-          batch_first: true
-          hidden_size: 128
-          num_layers: 2
-          bidirectional: false
-          dropout: 0.1
-      
+      model:
+        model_class_path: modelling.src.models.aes.grugru.GRUVAE
+        config_class_path: modelling.src.models.aes.grugru.GRUVAEConfig
+        config:
+          embedding:
+            num_embeddings: 21  # 20 amino acids + padding token
+            embedding_dim: 100
+            padding_idx: 0
+          latent_dim: 64
+          encoder:
+            input_size: 100  # Must match embedding_dim
+            batch_first: true
+            hidden_size: 128
+            num_layers: 2
+            bidirectional: true
+            dropout: 0.1
+          decoder:
+            input_size: 100  # Must match embedding_dim
+            batch_first: true
+            hidden_size: 128
+            num_layers: 2
+            bidirectional: false
+            dropout: 0.1
+
       # Loss configuration
       loss_manager:
         losses:
@@ -41,7 +43,7 @@ model:
               reconstruction: input
           
           # KL divergence loss
-          - loss_class_path: modelling.src.compute_numbers.fns.kl_gaus_unitgauss
+          - loss_class_path: modelling.src.compute_numbers.fns.kl_gauss_unitgauss
             name: kl_divergence
             weight: 0.001  # KL weight (beta-VAE)
             batch_key_mapping: {}
@@ -51,7 +53,7 @@ model:
       
       # Optimizer configuration
       optimizer:
-        optimizer_class_path: torch.optim.Adam
+        optimizer_class_path: torch.optim.AdamW
         optimizer_kwargs:
-          lr: 0.001
+          lr: 0.0001
           weight_decay: 0.0001

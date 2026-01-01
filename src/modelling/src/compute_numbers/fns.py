@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 
-def kl_gaus_unitgauss(mean: torch.Tensor, log_std: torch.Tensor) -> torch.Tensor:
+def kl_gauss_unitgauss(mean: torch.Tensor, log_std: torch.Tensor) -> torch.Tensor:
     """
     Compute KL divergence between Gaussian posterior and unit Gaussian prior.
 
@@ -23,4 +23,4 @@ def kl_gaus_unitgauss(mean: torch.Tensor, log_std: torch.Tensor) -> torch.Tensor
     """
     std = torch.exp(log_std)
     kl_per_sample = 0.5 * (mean.pow(2) + std.pow(2) - 1 - 2 * log_std).sum(dim=-1)
-    return kl_per_sample.mean()  # Return mean over batch for loss
+    return kl_per_sample.mean()

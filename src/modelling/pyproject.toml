@@ -9,4 +9,14 @@ dependencies = [
     "torch>=2.9.0",
     "datasets>=2.0.0",
     "pydantic>=2.0.0",
+    "jsonargparse[signatures]>=4.44.0",
+    "neptune>=1.14.0",
+    "einops>=0.8.1",
 ]
+
+[project.scripts]
+modelling = "modelling.src.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

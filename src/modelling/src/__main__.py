@@ -5,7 +5,12 @@ from pytorch_lightning.cli import LightningCLI
 
 def main():
     """Main entry point for Lightning CLI."""
-    LightningCLI(run=True, subclass_mode_model=True, subclass_mode_data=True)
+    LightningCLI(
+        run=True,
+        subclass_mode_model=True,
+        subclass_mode_data=True,
+        save_config_callback=None,
+    )
 
 
 if __name__ == "__main__":

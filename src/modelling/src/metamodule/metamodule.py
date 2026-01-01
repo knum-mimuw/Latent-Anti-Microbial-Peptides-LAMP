@@ -26,13 +26,18 @@ class StepOutput(TypedDict):
     loss: Optional[torch.Tensor]
 
 
+class ModelConfig(BaseModel):
+    model_class_path: str = Field(..., description="Import path to the model class")
+    config_class_path: str = Field(
+        ..., description="Import path to the model config class"
+    )
+    config: Dict[str, Any] = Field(..., description="Model config")
+
+
 class MetaModuleConfig(BaseModel):
     """Configuration for MetaModule."""
 
-    model_class_path: str = Field(..., description="Import path to the model class")
-    model_kwargs: Optional[Dict[str, Any]] = Field(
-        None, description="Arguments for model initialization"
-    )
+    model: ModelConfig = Field(..., description="Model configuration")
 
     loss_manager: LossManagerConfig = Field(
         default_factory=lambda: LossManagerConfig(losses=[]),
@@ -64,8 +69,10 @@ class MetaModule(LightningModule):
         super().__init__()
         self.config = config
 
-        self.model: Module = get_obj_from_import_path(config.model_class_path)(
-            **config.model_kwargs
+        self.model: Module = get_obj_from_import_path(config.model.model_class_path)(
+            config=get_obj_from_import_path(config.model.config_class_path)(
+                **config.model.config
+            )
         )
 
         self.loss_manager = LossManager(config.loss_manager.losses)

@@ -1,7 +1,6 @@
 trainer:
   logger:
-  - class_path: modelling.src.utils.neptune.NeptuneLogger
+  - class_path: pytorch_lightning.loggers.neptune.NeptuneLogger
     init_args:
-      project: pszmk/LAMP
-      api_token: ${oc.env:NEPTUNE_API_TOKEN}
+      project: KNUM/LAMP
       name: grugru_vae
