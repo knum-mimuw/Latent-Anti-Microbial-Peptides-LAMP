@@ -1,69 +1,44 @@
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from datasets import load_dataset, concatenate_datasets, Dataset
 from pydantic import BaseModel, Field, ConfigDict
 
 
-class HFDatasetConfig(BaseModel):
-    """Configuration for loading a Hugging Face dataset."""
+class DatasetConfig(BaseModel):
+    """Configuration for a single dataset."""
 
-    path: str = Field(..., description="Hugging Face dataset name or local path")
-    name: Optional[str] = Field(None, description="Dataset configuration name")
-    split: Optional[str] = Field(
-        None, description="Dataset split to load (train/validation/test)"
+    hf_kwargs: Dict[str, Any] = Field(
+        ..., description="Arguments passed to load_dataset()"
     )
-    data_files: Optional[Union[str, List[str], Dict[str, str]]] = Field(
-        None, description="Paths to source data files"
+    shuffle_kwargs: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Arguments for .shuffle() (shuffle: bool, buffer_size: int)",
     )
-    cache_dir: Optional[str] = Field(None, description="Cache directory")
-    streaming: Optional[bool] = Field(None, description="Enable streaming mode")
-    num_proc: Optional[int] = Field(None, description="Number of processes for loading")
-
-    model_config = ConfigDict(extra="allow")
-
-
-class HFDatasetItemConfig(BaseModel):
-    """Configuration for a named dataset item."""
-
-    name: str = Field(..., description="Name for this dataset")
-    cfg: HFDatasetConfig = Field(..., description="Dataset configuration")
-
-
-class DataLoaderConfig(BaseModel):
-    """Configuration for PyTorch DataLoader."""
-
-    batch_size: Optional[int] = Field(None, description="Batch size")
-    num_workers: Optional[int] = Field(
-        None, description="Number of data loading workers"
-    )
-    shuffle: Optional[bool] = Field(None, description="Shuffle dataset")
-    pin_memory: Optional[bool] = Field(None, description="Pin memory for GPU transfer")
-    drop_last: Optional[bool] = Field(None, description="Drop last incomplete batch")
-
-    model_config = ConfigDict(extra="allow")
 
 
 class SequenceDataModuleConfig(BaseModel):
     """Configuration for the SequenceDataModule."""
 
-    train_datasets: List[HFDatasetItemConfig] = Field(
-        ..., description="Training datasets with custom names"
+    # Dict of {name: DatasetConfig}
+    train_datasets: Dict[str, DatasetConfig] = Field(
+        ..., description="Training datasets: {name: DatasetConfig}"
     )
-    val_datasets: Optional[List[HFDatasetItemConfig]] = Field(
-        None, description="Validation datasets with custom names"
+    val_datasets: Optional[Dict[str, DatasetConfig]] = None
+    test_datasets: Optional[Dict[str, DatasetConfig]] = None
+
+    # Separate dataloader configs for train/val/test
+    train_dataloader_kwargs: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="DataLoader kwargs for training (batch_size, num_workers, etc.)",
     )
-    test_datasets: Optional[List[HFDatasetItemConfig]] = Field(
-        None, description="Test datasets with custom names"
+    val_dataloader_kwargs: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="DataLoader kwargs for validation (batch_size, num_workers, etc.)",
     )
-    train_dataloader: Optional[DataLoaderConfig] = Field(
-        None, description="Training DataLoader configuration"
-    )
-    val_dataloader: Optional[DataLoaderConfig] = Field(
-        None, description="Validation DataLoader configuration"
-    )
-    test_dataloader: Optional[DataLoaderConfig] = Field(
-        None, description="Test DataLoader configuration"
+    test_dataloader_kwargs: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="DataLoader kwargs for testing (batch_size, num_workers, etc.)",
     )
 
     model_config = ConfigDict(extra="allow")
@@ -79,20 +54,26 @@ class SequenceDataModule(LightningDataModule):
         self.val_datasets: Optional[Dict[str, Dataset]] = None
         self.test_datasets: Optional[Dict[str, Dataset]] = None
 
-    def _load_dataset(self, cfg: HFDatasetConfig) -> Dataset:
-        """Load one dataset or split from Hugging Face."""
-        ds = load_dataset(**cfg.model_dump(exclude_none=True))
+    def _load_dataset(self, dataset_config: DatasetConfig) -> Dataset:
+        """Load one dataset from Hugging Face."""
+        ds = load_dataset(**dataset_config.hf_kwargs)
         if isinstance(ds, dict):
-            if cfg.split is None:
+            split = dataset_config.hf_kwargs.get("split")
+            if split is None:
                 raise ValueError(
                     "Dataset has multiple splits but no split specified in config"
                 )
-            ds = ds[cfg.split]
+            ds = ds[split]
+
+        # Apply shuffling if shuffle_kwargs provided
+        if dataset_config.shuffle_kwargs:
+            ds = ds.shuffle(**dataset_config.shuffle_kwargs)
+
         return ds
 
-    def _merge_datasets(self, cfgs: List[HFDatasetItemConfig]) -> Dataset:
+    def _merge_datasets(self, datasets_cfg: Dict[str, DatasetConfig]) -> Dataset:
         """Concatenate multiple HF datasets into one."""
-        datasets = [self._load_dataset(item.cfg) for item in cfgs]
+        datasets = [self._load_dataset(cfg) for cfg in datasets_cfg.values()]
         return concatenate_datasets(datasets) if len(datasets) > 1 else datasets[0]
 
     def setup(self, stage: Optional[str] = None):
@@ -102,40 +83,36 @@ class SequenceDataModule(LightningDataModule):
 
             if self.config.val_datasets:
                 self.val_datasets = {
-                    item.name: self._load_dataset(item.cfg)
-                    for item in self.config.val_datasets
+                    name: self._load_dataset(cfg)
+                    for name, cfg in self.config.val_datasets.items()
                 }
 
         if stage in (None, "test") and self.config.test_datasets:
             self.test_datasets = {
-                item.name: self._load_dataset(item.cfg)
-                for item in self.config.test_datasets
+                name: self._load_dataset(cfg)
+                for name, cfg in self.config.test_datasets.items()
             }
 
     def train_dataloader(self) -> DataLoader:
         """Create training DataLoader."""
-        dl_kwargs = (
-            self.config.train_dataloader.model_dump(exclude_none=True)
-            if self.config.train_dataloader
-            else {}
-        )
-        return DataLoader(self.train_dataset, **dl_kwargs)
+        if self.train_dataset is None:
+            raise RuntimeError(
+                "train_dataset is None. Make sure setup() has been called with stage='fit' or stage=None."
+            )
+        return DataLoader(self.train_dataset, **self.config.train_dataloader_kwargs)
 
     def val_dataloader(self) -> Optional[Dict[str, DataLoader]]:
         """Create validation DataLoaders."""
         if self.val_datasets is None:
             return None
 
-        dl_kwargs = (
-            self.config.val_dataloader.model_dump(exclude_none=True)
-            if self.config.val_dataloader
-            else {}
-        )
-        # Override shuffle for validation
-        dl_kwargs.update(shuffle=False)
+        if not self.val_datasets:
+            raise RuntimeError(
+                "val_datasets is empty. Make sure setup() has been called with stage='fit' or stage=None."
+            )
 
         return {
-            name: DataLoader(dataset, **dl_kwargs)
+            name: DataLoader(dataset, **self.config.val_dataloader_kwargs)
             for name, dataset in self.val_datasets.items()
         }
 
@@ -144,15 +121,12 @@ class SequenceDataModule(LightningDataModule):
         if self.test_datasets is None:
             return None
 
-        dl_kwargs = (
-            self.config.test_dataloader.model_dump(exclude_none=True)
-            if self.config.test_dataloader
-            else {}
-        )
-        # Override shuffle and drop_last for test
-        dl_kwargs.update(shuffle=False, drop_last=False)
+        if not self.test_datasets:
+            raise RuntimeError(
+                "test_datasets is empty. Make sure setup() has been called with stage='test' or stage=None."
+            )
 
         return {
-            name: DataLoader(dataset, **dl_kwargs)
+            name: DataLoader(dataset, **self.config.test_dataloader_kwargs)
             for name, dataset in self.test_datasets.items()
         }
