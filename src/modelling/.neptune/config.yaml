@@ -1,0 +1,107 @@
+# pytorch_lightning==2.5.5
+seed_everything: 0
+trainer:
+  accelerator: auto
+  strategy: auto
+  devices: auto
+  num_nodes: 1
+  precision: 16-mixed
+  logger:
+  - class_path: pytorch_lightning.loggers.neptune.NeptuneLogger
+    init_args:
+      api_key: null
+      project: KNUM/LAMP
+      name: grugru_vae
+      run: null
+      log_model_checkpoints: true
+      prefix: training
+  callbacks: null
+  fast_dev_run: false
+  max_epochs: 100
+  min_epochs: null
+  max_steps: -1
+  min_steps: null
+  max_time: null
+  limit_train_batches: null
+  limit_val_batches: null
+  limit_test_batches: null
+  limit_predict_batches: null
+  overfit_batches: 0.0
+  val_check_interval: 0.5
+  check_val_every_n_epoch: 1
+  num_sanity_val_steps: null
+  log_every_n_steps: 10
+  enable_checkpointing: true
+  enable_progress_bar: true
+  enable_model_summary: true
+  accumulate_grad_batches: 1
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: null
+  deterministic: null
+  benchmark: null
+  inference_mode: true
+  use_distributed_sampler: true
+  profiler: null
+  detect_anomaly: false
+  barebones: false
+  plugins: null
+  sync_batchnorm: false
+  reload_dataloaders_every_n_epochs: 0
+  default_root_dir: null
+  model_registry: null
+model:
+  class_path: modelling.src.metamodule.metamodule.MetaModule
+  init_args:
+    config:
+      model:
+        model_class_path: modelling.src.models.aes.grugru.GRUVAE
+        config_class_path: modelling.src.models.aes.grugru.GRUVAEConfig
+        config:
+          embedding:
+            num_embeddings: 21
+            embedding_dim: 100
+            padding_idx: 0
+          latent_dim: 64
+          encoder:
+            input_size: 100
+            batch_first: true
+            hidden_size: 128
+            num_layers: 2
+            bidirectional: true
+            dropout: 0.1
+          decoder:
+            input_size: 100
+            batch_first: true
+            hidden_size: 128
+            num_layers: 2
+            bidirectional: false
+            dropout: 0.1
+      loss_manager:
+        losses:
+        - loss_class_path: torch.nn.functional.cross_entropy
+          loss_kwargs:
+            reduction: mean
+          weight: 1.0
+          name: reconstruction
+          batch_key_mapping:
+            input_ids: target
+          output_key_mapping:
+            reconstruction: input
+        - loss_class_path: modelling.src.compute_numbers.fns.kl_gauss_unitgauss
+          loss_kwargs: null
+          weight: 0.001
+          name: kl_divergence
+          batch_key_mapping: {}
+          output_key_mapping:
+            mean: mean
+            log_std: log_std
+      optimizer:
+        optimizer_class_path: torch.optim.AdamW
+        optimizer_kwargs:
+          lr: 0.0001
+          weight_decay: 0.0001
+      scheduler: null
+data: null
+optimizer: null
+lr_scheduler: null
+ckpt_path: null
