@@ -1,0 +1,38 @@
+data:
+  class_path: modelling.src.datamodules.seq_dm.SequenceDataModule
+  init_args:
+    config:
+      train_datasets:
+        train:
+          hf_kwargs:
+            path: "pszmk/LAMP-datasets"
+            split: "train"
+            streaming: true
+          shuffle_kwargs:
+            buffer_size: 10000
+
+      val_datasets:
+        val:
+          hf_kwargs:
+            path: "pszmk/LAMP-datasets"
+            split: "validation"
+            streaming: true
+
+      train_dataloader_kwargs:
+        batch_size: 32
+        num_workers: 0
+        pin_memory: true
+        drop_last: false
+
+      val_dataloader_kwargs:
+        batch_size: 32
+        num_workers: 0
+        pin_memory: true
+        drop_last: false
+
+      test_dataloader_kwargs:
+        batch_size: 32
+        num_workers: 0
+        pin_memory: true
+        drop_last: false
+
