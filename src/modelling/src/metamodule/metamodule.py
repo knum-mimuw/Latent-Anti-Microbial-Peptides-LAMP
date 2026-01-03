@@ -79,7 +79,7 @@ class MetaModule(LightningModule):
 
     def training_step(self, batch: Dict[str, Any], batch_idx: int) -> StepOutput:
         outputs = self.model(**batch)
-        loss_dict = self.loss_manager.compute_losses(outputs, batch, self.device)
+        loss_dict = self.loss_manager.compute_losses(outputs, batch)
 
         self.log_dict(
             {f"train/{k}": v for k, v in loss_dict.items()},
@@ -93,7 +93,7 @@ class MetaModule(LightningModule):
 
     def validation_step(self, batch: Dict[str, Any], batch_idx: int) -> StepOutput:
         outputs = self.model(**batch)
-        loss_dict = self.loss_manager.compute_losses(outputs, batch, self.device)
+        loss_dict = self.loss_manager.compute_losses(outputs, batch)
 
         self.log_dict(
             {f"val/{k}": v for k, v in loss_dict.items()},
@@ -107,7 +107,7 @@ class MetaModule(LightningModule):
 
     def test_step(self, batch: Dict[str, Any], batch_idx: int) -> StepOutput:
         outputs = self.model(**batch)
-        loss_dict = self.loss_manager.compute_losses(outputs, batch, self.device)
+        loss_dict = self.loss_manager.compute_losses(outputs, batch)
 
         self.log_dict(
             {f"test/{k}": v for k, v in loss_dict.items()},

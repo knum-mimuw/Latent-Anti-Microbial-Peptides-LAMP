@@ -4,108 +4,129 @@ PyTorch Lightning data modules for loading and preparing datasets.
 
 ## SequenceDataModule
 
-A data module for handling sequence datasets, particularly from Hugging Face datasets.
+A data module for handling sequence datasets from Hugging Face.
 
 ### Features
 
 - **Hugging Face Integration**: Load datasets from Hugging Face Hub or local paths
 - **Multiple Datasets**: Support for combining multiple datasets
 - **Flexible Configuration**: Configure train/val/test splits independently
-- **DataLoader Configuration**: Customizable batch size, workers, etc.
+- **Tokenizer Collate**: On-the-fly tokenization via configurable collate function
+- **Streaming Support**: Works with HF streaming datasets
 
 ### Configuration
 
 #### SequenceDataModuleConfig
 
-- `train_datasets`: List of `HFDatasetItemConfig` for training data
-- `val_datasets`: Optional list of `HFDatasetItemConfig` for validation data
-- `test_datasets`: Optional list of `HFDatasetItemConfig` for test data
-- `dataloader`: `DataLoaderConfig` for DataLoader settings
+- `train_datasets`: Dict of `{name: DatasetConfig}` for training data
+- `val_datasets`: Optional dict of `{name: DatasetConfig}` for validation data
+- `test_datasets`: Optional dict of `{name: DatasetConfig}` for test data
+- `collate`: Optional `CollateConfig` for tokenization/batching
+- `train_dataloader_kwargs`: DataLoader kwargs for training
+- `val_dataloader_kwargs`: DataLoader kwargs for validation
+- `test_dataloader_kwargs`: DataLoader kwargs for testing
 
-#### HFDatasetConfig
+#### DatasetConfig
 
-Configuration for loading a Hugging Face dataset:
+Configuration for a single dataset:
 
-- `path`: Hugging Face dataset name or local path (required)
-- `name`: Dataset configuration name (optional)
-- `split`: Dataset split to load (train/validation/test) (optional)
-- `data_files`: Paths to source data files (optional)
-- `cache_dir`: Cache directory (optional)
-- `streaming`: Enable streaming mode (optional)
-- `num_proc`: Number of processes for loading (optional)
+- `hf_kwargs`: Arguments passed directly to `load_dataset()` (path, split, streaming, etc.)
+- `shuffle_kwargs`: Optional arguments for `.shuffle()` (buffer_size for streaming)
 
-#### HFDatasetItemConfig
+#### CollateConfig
 
-Named dataset item:
+Configuration for a collate function:
 
-- `name`: Name for this dataset (required)
-- `cfg`: `HFDatasetConfig` for dataset configuration (required)
+- `class_path`: Import path to collate class
+- `config_class_path`: Import path to collate config class
+- `config`: Dict of config arguments
 
-#### DataLoaderConfig
+#### TokenizerCollateConfig
 
-DataLoader configuration:
+Configuration for the tokenizer collate function:
 
-- `batch_size`: Batch size (required)
-- `num_workers`: Number of worker processes (default: 0)
-- `pin_memory`: Pin memory for faster GPU transfer (default: False)
-- `shuffle`: Shuffle training data (default: True)
-- `drop_last`: Drop last incomplete batch (default: False)
-- `**kwargs`: Additional DataLoader arguments
+- `tokenizer_path`: HuggingFace tokenizer path or local path (required)
+- `sequence_column`: Column containing sequences (default: `"sequence"`)
+- `tokenizer_kwargs`: Dict of kwargs passed to `tokenizer()` call (default: `{padding: "longest", return_tensors: "pt"}`)
+- `preserve_columns`: List of columns to preserve from original batch (default: `[]`)
 
-### Usage Example
+### YAML Configuration Example
 
-```python
-from datamodules import SequenceDataModule, SequenceDataModuleConfig
+```yaml
+data:
+  class_path: modelling.src.datamodules.seq_dm.SequenceDataModule
+  init_args:
+    config:
+      collate:
+        class_path: modelling.src.datamodules.collate.TokenizerCollate
+        config_class_path: modelling.src.datamodules.collate.TokenizerCollateConfig
+        config:
+          tokenizer_path: pszmk/protein-aa-fast-tokenizer
+          sequence_column: sequence
+          tokenizer_kwargs:
+            padding: longest
+            max_length: 52
+            truncation: true
+            return_tensors: pt
 
-config = SequenceDataModuleConfig(
-    train_datasets=[
-        HFDatasetItemConfig(
-            name="train",
-            cfg=HFDatasetConfig(
-                path="my_dataset",
-                split="train",
-            ),
-        ),
-    ],
-    val_datasets=[
-        HFDatasetItemConfig(
-            name="val",
-            cfg=HFDatasetConfig(
-                path="my_dataset",
-                split="validation",
-            ),
-        ),
-    ],
-    dataloader=DataLoaderConfig(
-        batch_size=32,
-        num_workers=4,
-        shuffle=True,
-    ),
-)
+      train_datasets:
+        train:
+          hf_kwargs:
+            path: "pszmk/LAMP-datasets"
+            split: "train"
 
-dm = SequenceDataModule(config)
-trainer.fit(model, dm)
+      val_datasets:
+        val:
+          hf_kwargs:
+            path: "pszmk/LAMP-datasets"
+            split: "validation"
+
+      train_dataloader_kwargs:
+        batch_size: 32
+        num_workers: 4
+        pin_memory: true
+        shuffle: true
 ```
+
+### Batch Output
+
+With `TokenizerCollate`, batches will contain:
+
+- `input_ids`: Tokenized sequences as PyTorch tensor `[batch_size, seq_len]`
+- `attention_mask`: Attention mask tensor `[batch_size, seq_len]`
+- Any columns specified in `preserve_columns`
 
 ### Multiple Datasets
 
-You can combine multiple datasets:
+Combine multiple datasets by adding more entries:
 
-```python
-config = SequenceDataModuleConfig(
-    train_datasets=[
-        HFDatasetItemConfig(
-            name="dataset1",
-            cfg=HFDatasetConfig(path="dataset1", split="train"),
-        ),
-        HFDatasetItemConfig(
-            name="dataset2",
-            cfg=HFDatasetConfig(path="dataset2", split="train"),
-        ),
-    ],
-    # ...
-)
+```yaml
+train_datasets:
+  dataset1:
+    hf_kwargs:
+      path: "dataset1"
+      split: "train"
+  dataset2:
+    hf_kwargs:
+      path: "dataset2"
+      split: "train"
 ```
 
-The data module will concatenate datasets with the same split.
+Datasets are concatenated during setup.
 
+### Streaming Mode
+
+For large datasets, enable streaming:
+
+```yaml
+train_datasets:
+  train:
+    hf_kwargs:
+      path: "large_dataset"
+      split: "train"
+      streaming: true
+    shuffle_kwargs:
+      buffer_size: 10000
+```
+
+Note: Use `num_workers: 0` with streaming datasets.

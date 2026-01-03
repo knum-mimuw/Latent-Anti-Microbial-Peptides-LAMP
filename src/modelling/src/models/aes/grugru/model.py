@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Dict, Optional
+from typing import Dict
 from einops import rearrange
 
 from .config import GRUConfig, GRUVAEConfig
@@ -64,7 +64,6 @@ class GRUDecoder(nn.Module):
 
     def forward(self, z: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
         """Decode latent representation to sequence."""
-        batch_size = z.shape[0]
 
         h_0_flat = self.latent_proj(z)  # [batch_size, hidden_dim * num_layers]
         h_0 = rearrange(
@@ -98,11 +97,21 @@ class GRUVAE(nn.Module):
         self.encoder = GRUEncoder(config)
         self.decoder = GRUDecoder(config)
 
-    def forward(self, input_ids: torch.Tensor) -> Dict[str, torch.Tensor]:
-        """Forward pass through VAE."""
+    def forward(self, input_ids: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+        """Forward pass through VAE.
+
+        Args:
+            input_ids: Tokenized input sequences [batch_size, seq_len]
+            **kwargs: Additional batch keys (e.g., attention_mask) - ignored
+
+        Returns:
+            Dictionary with logits, mean, and log_std tensors.
+        """
         mean, log_std = self.encoder(input_ids)
         z = _sample_gaussian(mean, torch.exp(log_std))
         logits = self.decoder(z, input_ids)
+
+        logits = rearrange(logits, "b s v -> b v s")
 
         return {
             "logits": logits,

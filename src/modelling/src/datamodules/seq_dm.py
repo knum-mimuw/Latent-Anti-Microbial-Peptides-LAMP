@@ -1,8 +1,10 @@
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from datasets import load_dataset, concatenate_datasets, Dataset
 from pydantic import BaseModel, Field, ConfigDict
+
+from ..utils.importing import get_obj_from_import_path
 
 
 class DatasetConfig(BaseModel):
@@ -17,6 +19,16 @@ class DatasetConfig(BaseModel):
     )
 
 
+class CollateConfig(BaseModel):
+    """Configuration for a collate function."""
+
+    collate_class: str = Field(..., description="Import path to collate class")
+    collate_config_class: str = Field(
+        ..., description="Import path to collate config class"
+    )
+    collate_kwargs: Dict[str, Any] = Field(..., description="Collate config arguments")
+
+
 class SequenceDataModuleConfig(BaseModel):
     """Configuration for the SequenceDataModule."""
 
@@ -26,6 +38,11 @@ class SequenceDataModuleConfig(BaseModel):
     )
     val_datasets: Optional[Dict[str, DatasetConfig]] = None
     test_datasets: Optional[Dict[str, DatasetConfig]] = None
+
+    collate: Optional[CollateConfig] = Field(
+        None,
+        description="Collate function config for tokenization/batching",
+    )
 
     # Separate dataloader configs for train/val/test
     train_dataloader_kwargs: Dict[str, Any] = Field(
@@ -53,6 +70,7 @@ class SequenceDataModule(LightningDataModule):
         self.train_dataset: Optional[Dataset] = None
         self.val_datasets: Optional[Dict[str, Dataset]] = None
         self.test_datasets: Optional[Dict[str, Dataset]] = None
+        self._collate_fn: Optional[Callable] = None
 
     def _load_dataset(self, dataset_config: DatasetConfig) -> Dataset:
         """Load one dataset from Hugging Face."""
@@ -75,6 +93,19 @@ class SequenceDataModule(LightningDataModule):
         """Concatenate multiple HF datasets into one."""
         datasets = [self._load_dataset(cfg) for cfg in datasets_cfg.values()]
         return concatenate_datasets(datasets) if len(datasets) > 1 else datasets[0]
+
+    def _get_collate_fn(self) -> Optional[Callable]:
+        """Get collate function from config or return None for default."""
+        if self._collate_fn is not None:
+            return self._collate_fn
+
+        if self.config.collate is None:
+            return None
+
+        collate_cls = get_obj_from_import_path(self.config.collate.collate_class)
+        config_cls = get_obj_from_import_path(self.config.collate.collate_config_class)
+        self._collate_fn = collate_cls(config_cls(**self.config.collate.collate_kwargs))
+        return self._collate_fn
 
     def setup(self, stage: Optional[str] = None):
         """Load datasets and prepare them for PyTorch."""
@@ -99,7 +130,11 @@ class SequenceDataModule(LightningDataModule):
             raise RuntimeError(
                 "train_dataset is None. Make sure setup() has been called with stage='fit' or stage=None."
             )
-        return DataLoader(self.train_dataset, **self.config.train_dataloader_kwargs)
+        return DataLoader(
+            self.train_dataset,
+            collate_fn=self._get_collate_fn(),
+            **self.config.train_dataloader_kwargs,
+        )
 
     def val_dataloader(self) -> Optional[Dict[str, DataLoader]]:
         """Create validation DataLoaders."""
@@ -111,8 +146,11 @@ class SequenceDataModule(LightningDataModule):
                 "val_datasets is empty. Make sure setup() has been called with stage='fit' or stage=None."
             )
 
+        collate_fn = self._get_collate_fn()
         return {
-            name: DataLoader(dataset, **self.config.val_dataloader_kwargs)
+            name: DataLoader(
+                dataset, collate_fn=collate_fn, **self.config.val_dataloader_kwargs
+            )
             for name, dataset in self.val_datasets.items()
         }
 
@@ -126,7 +164,10 @@ class SequenceDataModule(LightningDataModule):
                 "test_datasets is empty. Make sure setup() has been called with stage='test' or stage=None."
             )
 
+        collate_fn = self._get_collate_fn()
         return {
-            name: DataLoader(dataset, **self.config.test_dataloader_kwargs)
+            name: DataLoader(
+                dataset, collate_fn=collate_fn, **self.config.test_dataloader_kwargs
+            )
             for name, dataset in self.test_datasets.items()
         }
