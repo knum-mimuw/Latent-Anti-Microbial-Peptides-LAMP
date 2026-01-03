@@ -2,6 +2,18 @@ data:
   class_path: modelling.src.datamodules.seq_dm.SequenceDataModule
   init_args:
     config:
+      collate:
+        collate_class: modelling.src.datamodules.collate.TokenizerCollate
+        collate_config_class: modelling.src.datamodules.collate.TokenizerCollateConfig
+        collate_kwargs:
+          tokenizer_path: pszmk/protein-aa-fast-tokenizer
+          sequence_column: sequence
+          tokenized_sequence_column: input_ids
+          tokenizer_kwargs:
+            padding: longest
+            return_tensors: pt
+          preserve_columns: []
+
       train_datasets:
         train:
           hf_kwargs:

@@ -9,7 +9,7 @@ model:
         config_class_path: modelling.src.models.aes.grugru.GRUVAEConfig
         config:
           embedding:
-            num_embeddings: 21  # 20 amino acids + padding token
+            num_embeddings: 28  # 20 amino acids + special tokens
             embedding_dim: 100
             padding_idx: 0
           latent_dim: 64
@@ -35,12 +35,13 @@ model:
           - loss_class_path: torch.nn.functional.cross_entropy
             loss_kwargs:
               reduction: mean
-            name: reconstruction
+              ignore_index: 0
+            name: cross_entropy
             weight: 1.0
             batch_key_mapping:
               input_ids: target
             output_key_mapping:
-              reconstruction: input
+              logits: input
           
           # KL divergence loss
           - loss_class_path: modelling.src.compute_numbers.fns.kl_gauss_unitgauss
