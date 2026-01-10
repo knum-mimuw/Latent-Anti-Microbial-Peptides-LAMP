@@ -9,7 +9,7 @@ model:
         config_class_path: modelling.src.models.aes.grugru.GRUVAEConfig
         config:
           embedding:
-            num_embeddings: 28  # 20 amino acids + special tokens
+            num_embeddings: 29  # 20 amino acids + special tokens
             embedding_dim: 100
             padding_idx: 0
           latent_dim: 64

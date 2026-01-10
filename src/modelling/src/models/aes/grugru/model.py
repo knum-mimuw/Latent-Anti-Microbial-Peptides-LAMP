@@ -71,7 +71,7 @@ class GRUDecoder(nn.Module):
             "b (l h) -> l b h",
             l=self.config.decoder.num_layers,
             h=self.config.decoder.hidden_size,
-        )  # [num_layers, batch_size, hidden_dim]
+        ).contiguous()  # [num_layers, batch_size, hidden_dim]
 
         embeddings = self.embedding(input_ids)  # [batch_size, seq_len, embedding_dim]
         output, _ = self.gru(embeddings, h_0)  # [batch_size, seq_len, hidden_dim]

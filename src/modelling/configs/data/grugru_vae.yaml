@@ -27,14 +27,14 @@ data:
             split: "validation"
 
       train_dataloader_kwargs:
-        batch_size: 32
+        batch_size: 4096
         num_workers: 4
         pin_memory: true
         shuffle: true
         drop_last: false
 
       val_dataloader_kwargs:
-        batch_size: 32
+        batch_size: 1024
         num_workers: 4
         pin_memory: true
         shuffle: false
