@@ -1,28 +1,72 @@
-from pydantic import BaseModel, ConfigDict, Field
+from transformers import PretrainedConfig
 
 
-class GRUConfig(BaseModel):
-    batch_first: bool = Field(True, description="Whether to use batch first indexing")
-    hidden_size: int = Field(..., description="GRU hidden dimension")
-    num_layers: int = Field(..., description="Number of GRU layers")
-    bidirectional: bool = Field(..., description="Use bidirectional encoder")
-    dropout: float = Field(..., description="Dropout rate")
+class GRUVAEConfig(PretrainedConfig):
+    """HuggingFace-compatible configuration for GRU-based VAE.
 
-    model_config = ConfigDict(extra="allow")
+    Uses flat parameters for maximum compatibility with HuggingFace Hub.
+    """
 
+    model_type = "gruvae"
 
-class EmbeddingConfig(BaseModel):
-    num_embeddings: int = Field(..., description="Number of embeddings")
-    embedding_dim: int = Field(..., description="Embedding dimension")
-    padding_idx: int = Field(0, description="Padding index")
+    # Enable trust_remote_code loading via AutoModel
+    auto_map = {
+        "AutoConfig": "config.GRUVAEConfig",
+        "AutoModel": "model.GRUVAE",
+    }
 
-    model_config = ConfigDict(extra="allow")
+    def __init__(
+        self,
+        # Embedding parameters
+        vocab_size: int = 29,
+        embedding_dim: int = 100,
+        padding_idx: int = 0,
+        # Latent space
+        latent_dim: int = 64,
+        # Encoder parameters
+        encoder_hidden_size: int = 128,
+        encoder_num_layers: int = 2,
+        encoder_bidirectional: bool = True,
+        encoder_dropout: float = 0.1,
+        # Decoder parameters
+        decoder_hidden_size: int = 128,
+        decoder_num_layers: int = 2,
+        decoder_dropout: float = 0.1,
+        **kwargs,
+    ):
+        """Initialize GRU VAE configuration.
 
+        Args:
+            vocab_size: Number of tokens in vocabulary (amino acids + special tokens).
+            embedding_dim: Dimension of token embeddings.
+            padding_idx: Index used for padding tokens.
+            latent_dim: Dimension of the latent space.
+            encoder_hidden_size: Hidden size of encoder GRU.
+            encoder_num_layers: Number of layers in encoder GRU.
+            encoder_bidirectional: Whether encoder GRU is bidirectional.
+            encoder_dropout: Dropout rate for encoder GRU.
+            decoder_hidden_size: Hidden size of decoder GRU.
+            decoder_num_layers: Number of layers in decoder GRU.
+            decoder_dropout: Dropout rate for decoder GRU.
+            **kwargs: Additional arguments passed to PretrainedConfig.
+        """
+        super().__init__(**kwargs)
 
-class GRUVAEConfig(BaseModel):
-    """Configuration for GRU-based VAE."""
+        # Embedding
+        self.vocab_size = vocab_size
+        self.embedding_dim = embedding_dim
+        self.padding_idx = padding_idx
 
-    embedding: EmbeddingConfig = Field(..., description="Embedding configuration")
-    latent_dim: int = Field(64, description="Latent space dimension")
-    encoder: GRUConfig = Field(..., description="Encoder configuration")
-    decoder: GRUConfig = Field(..., description="Decoder configuration")
+        # Latent
+        self.latent_dim = latent_dim
+
+        # Encoder
+        self.encoder_hidden_size = encoder_hidden_size
+        self.encoder_num_layers = encoder_num_layers
+        self.encoder_bidirectional = encoder_bidirectional
+        self.encoder_dropout = encoder_dropout
+
+        # Decoder
+        self.decoder_hidden_size = decoder_hidden_size
+        self.decoder_num_layers = decoder_num_layers
+        self.decoder_dropout = decoder_dropout

@@ -8,25 +8,21 @@ model:
         model_class_path: modelling.src.models.aes.grugru.GRUVAE
         config_class_path: modelling.src.models.aes.grugru.GRUVAEConfig
         config:
-          embedding:
-            num_embeddings: 29  # 20 amino acids + special tokens
-            embedding_dim: 100
-            padding_idx: 0
+          # Embedding parameters
+          vocab_size: 29  # 20 amino acids + special tokens
+          embedding_dim: 100
+          padding_idx: 0
+          # Latent space
           latent_dim: 64
-          encoder:
-            input_size: 100  # Must match embedding_dim
-            batch_first: true
-            hidden_size: 128
-            num_layers: 2
-            bidirectional: true
-            dropout: 0.1
-          decoder:
-            input_size: 100  # Must match embedding_dim
-            batch_first: true
-            hidden_size: 128
-            num_layers: 2
-            bidirectional: false
-            dropout: 0.1
+          # Encoder parameters
+          encoder_hidden_size: 128
+          encoder_num_layers: 2
+          encoder_bidirectional: true
+          encoder_dropout: 0.1
+          # Decoder parameters
+          decoder_hidden_size: 128
+          decoder_num_layers: 2
+          decoder_dropout: 0.1
 
       # Loss configuration
       loss_manager:

@@ -2,22 +2,36 @@ import torch
 import torch.nn as nn
 from typing import Dict
 from einops import rearrange
+from transformers import PreTrainedModel
 
-from .config import GRUConfig, GRUVAEConfig
+from .config import GRUVAEConfig
 
 
 class GRUEncoder(nn.Module):
     """GRU-based encoder for VAE."""
 
-    def __init__(self, config: GRUConfig):
+    def __init__(self, config: GRUVAEConfig):
         """Initialize encoder with embedding and GRU layers."""
         super().__init__()
         self.config = config
-        self.embedding = nn.Embedding(**config.embedding.model_dump())
-        self.gru = nn.GRU(**config.encoder.model_dump())
 
-        encoder_output_dim = config.encoder.hidden_size * (
-            2 if config.encoder.bidirectional else 1
+        self.embedding = nn.Embedding(
+            num_embeddings=config.vocab_size,
+            embedding_dim=config.embedding_dim,
+            padding_idx=config.padding_idx,
+        )
+
+        self.gru = nn.GRU(
+            input_size=config.embedding_dim,
+            hidden_size=config.encoder_hidden_size,
+            num_layers=config.encoder_num_layers,
+            batch_first=True,
+            bidirectional=config.encoder_bidirectional,
+            dropout=config.encoder_dropout if config.encoder_num_layers > 1 else 0,
+        )
+
+        encoder_output_dim = config.encoder_hidden_size * (
+            2 if config.encoder_bidirectional else 1
         )
         self.mean_linear = nn.Linear(encoder_output_dim, config.latent_dim)
         self.log_std_linear = nn.Linear(encoder_output_dim, config.latent_dim)
@@ -27,7 +41,7 @@ class GRUEncoder(nn.Module):
         embeddings = self.embedding(x)  # [batch_size, seq_len, embedding_dim]
         output, hidden = self.gru(embeddings)
 
-        if self.config.encoder.bidirectional:
+        if self.config.encoder_bidirectional:
             forward_hidden = hidden[-2]  # [batch_size, hidden_dim]
             backward_hidden = hidden[-1]  # [batch_size, hidden_dim]
             last_hidden = torch.cat(
@@ -45,22 +59,32 @@ class GRUEncoder(nn.Module):
 class GRUDecoder(nn.Module):
     """GRU-based decoder for VAE."""
 
-    def __init__(self, config: GRUConfig):
+    def __init__(self, config: GRUVAEConfig):
         """Initialize decoder with embedding, GRU, and projection layers."""
         super().__init__()
         self.config = config
-        self.embedding = nn.Embedding(**config.embedding.model_dump())
+
+        self.embedding = nn.Embedding(
+            num_embeddings=config.vocab_size,
+            embedding_dim=config.embedding_dim,
+            padding_idx=config.padding_idx,
+        )
 
         self.latent_proj = nn.Linear(
             config.latent_dim,
-            config.decoder.hidden_size * config.decoder.num_layers,
+            config.decoder_hidden_size * config.decoder_num_layers,
         )
 
-        self.gru = nn.GRU(**config.decoder.model_dump())
-
-        self.output_proj = nn.Linear(
-            config.decoder.hidden_size, config.embedding.num_embeddings
+        self.gru = nn.GRU(
+            input_size=config.embedding_dim,
+            hidden_size=config.decoder_hidden_size,
+            num_layers=config.decoder_num_layers,
+            batch_first=True,
+            bidirectional=False,
+            dropout=config.decoder_dropout if config.decoder_num_layers > 1 else 0,
         )
+
+        self.output_proj = nn.Linear(config.decoder_hidden_size, config.vocab_size)
 
     def forward(self, z: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
         """Decode latent representation to sequence."""
@@ -69,8 +93,8 @@ class GRUDecoder(nn.Module):
         h_0 = rearrange(
             h_0_flat,
             "b (l h) -> l b h",
-            l=self.config.decoder.num_layers,
-            h=self.config.decoder.hidden_size,
+            l=self.config.decoder_num_layers,
+            h=self.config.decoder_hidden_size,
         ).contiguous()  # [num_layers, batch_size, hidden_dim]
 
         embeddings = self.embedding(input_ids)  # [batch_size, seq_len, embedding_dim]
@@ -87,15 +111,29 @@ def _sample_gaussian(mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
     return z
 
 
-class GRUVAE(nn.Module):
-    """GRU encoder-decoder VAE."""
+class GRUVAE(PreTrainedModel):
+    """GRU encoder-decoder VAE with HuggingFace compatibility.
+
+    This model can be saved/loaded via HuggingFace Hub:
+        model.save_pretrained("./my_model")
+        model.push_to_hub("username/model-name")
+        model = GRUVAE.from_pretrained("username/model-name")
+
+    It also works seamlessly with PyTorch Lightning since PreTrainedModel
+    inherits from nn.Module.
+    """
+
+    config_class = GRUVAEConfig
+    base_model_prefix = "gruvae"
 
     def __init__(self, config: GRUVAEConfig):
         """Initialize VAE with encoder and decoder."""
-        super().__init__()
-        self.config = config
+        super().__init__(config)
         self.encoder = GRUEncoder(config)
         self.decoder = GRUDecoder(config)
+
+        # Initialize weights using HuggingFace's mechanism
+        self.post_init()
 
     def forward(self, input_ids: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
         """Forward pass through VAE.

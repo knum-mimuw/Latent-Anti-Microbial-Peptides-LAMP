@@ -67,6 +67,7 @@ class MetaModule(LightningModule):
 
     def __init__(self, config: MetaModuleConfig):
         super().__init__()
+        self.save_hyperparameters({"config": config.model_dump()})
         self.config = config
 
         self.model: Module = get_obj_from_import_path(config.model.model_class_path)(
