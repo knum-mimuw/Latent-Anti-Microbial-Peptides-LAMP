@@ -1,0 +1,12 @@
+# Configuration for building and uploading the protein tokenizer
+
+build:
+  output_dir: setup/protein-aa-fast-tokenizer
+
+upload:
+  repo_id: pszmk/protein-aa-fast-tokenizer
+  private: false
+  commit_message: "Upload protein amino-acid fast tokenizer"
+  token: null  # Will use HF_TOKEN environment variable if not set
+  hub_readme: setup/prepare_tokenizer/HUB_README.md
+  delete_after: false  # Set to true to delete local directory after upload

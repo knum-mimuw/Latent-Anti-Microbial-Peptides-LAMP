@@ -6,7 +6,6 @@ prepare:
   dataset_name: nvidia/esm2_uniref_pretraining_data
   splits: [train, validation]
   max_length: 50
-  max_sequences: 10  # Set to 10 for debug upload
 
 # Upload configuration
 upload:

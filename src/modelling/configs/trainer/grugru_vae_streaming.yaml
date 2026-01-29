@@ -1,0 +1,14 @@
+trainer:
+  max_epochs: 100
+  accelerator: auto
+  devices: auto
+  precision: 16-mixed
+  gradient_clip_val: 1.0
+  log_every_n_steps: 10
+  val_check_interval: 0.5
+  enable_checkpointing: true
+  enable_progress_bar: true
+  enable_model_summary: true
+  callbacks:
+    - class_path: modelling.src.callbacks.hf_iterable_set_epoch.HFIterableSetEpoch
+

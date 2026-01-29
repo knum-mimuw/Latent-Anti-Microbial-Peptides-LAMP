@@ -1,0 +1,6 @@
+trainer:
+  logger:
+  - class_path: pytorch_lightning.loggers.neptune.NeptuneLogger
+    init_args:
+      project: KNUM/LAMP
+      name: grugru_vae

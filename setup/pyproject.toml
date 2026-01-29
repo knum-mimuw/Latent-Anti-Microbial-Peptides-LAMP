@@ -12,6 +12,8 @@ dependencies = [
     "typer>=0.19.2",
     "pydantic>=2.7.0",
     "PyYAML>=6.0.0",
+    "tokenizers>=0.22.1",
+    "transformers>=4.57.3",
 ]
 
 
