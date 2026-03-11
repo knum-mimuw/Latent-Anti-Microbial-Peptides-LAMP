@@ -30,9 +30,7 @@ class GRUEncoder(nn.Module):
             dropout=config.encoder_dropout if config.encoder_num_layers > 1 else 0,
         )
 
-        encoder_output_dim = config.encoder_hidden_size * (
-            2 if config.encoder_bidirectional else 1
-        )
+        encoder_output_dim = config.encoder_hidden_size * (2 if config.encoder_bidirectional else 1)
         self.mean_linear = nn.Linear(encoder_output_dim, config.latent_dim)
         self.log_std_linear = nn.Linear(encoder_output_dim, config.latent_dim)
 

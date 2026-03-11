@@ -17,7 +17,9 @@ from .build_tokenizer import DEFAULT_OUTPUT_DIR
 class UploadTokenizerConfig(BaseModel):
     """Configuration for uploading the tokenizer to Hugging Face Hub."""
 
-    repo_id: str = Field(..., description="Hugging Face repo ID (e.g., pszmk/protein-aa-fast-tokenizer)")
+    repo_id: str = Field(
+        ..., description="Hugging Face repo ID (e.g., pszmk/protein-aa-fast-tokenizer)"
+    )
     private: bool = Field(False, description="Whether the repo should be private")
     commit_message: str = Field("Upload tokenizer", description="Commit message for the upload")
     token: Optional[str] = Field(None, description="HF token; falls back to HF_TOKEN env")

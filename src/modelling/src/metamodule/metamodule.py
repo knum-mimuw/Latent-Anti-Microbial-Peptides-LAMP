@@ -28,9 +28,7 @@ class StepOutput(TypedDict):
 
 class ModelConfig(BaseModel):
     model_class_path: str = Field(..., description="Import path to the model class")
-    config_class_path: str = Field(
-        ..., description="Import path to the model config class"
-    )
+    config_class_path: str = Field(..., description="Import path to the model config class")
     config: Dict[str, Any] = Field(..., description="Model config")
 
 
@@ -45,9 +43,7 @@ class MetaModuleConfig(BaseModel):
     )
 
     optimizer: OptimizerConfig = Field(..., description="Optimizer configuration")
-    scheduler: Optional[SchedulerConfig] = Field(
-        None, description="Scheduler configuration"
-    )
+    scheduler: Optional[SchedulerConfig] = Field(None, description="Scheduler configuration")
 
     model_config = ConfigDict(extra="allow")
 
@@ -71,9 +67,7 @@ class MetaModule(LightningModule):
         self.config = config
 
         self.model: Module = get_obj_from_import_path(config.model.model_class_path)(
-            config=get_obj_from_import_path(config.model.config_class_path)(
-                **config.model.config
-            )
+            config=get_obj_from_import_path(config.model.config_class_path)(**config.model.config)
         )
 
         self.loss_manager = LossManager(config.loss_manager.losses)
@@ -122,6 +116,4 @@ class MetaModule(LightningModule):
 
     def configure_optimizers(self):
         """Configure optimizers and schedulers."""
-        return configure_optimizers(
-            self.config.optimizer, self.parameters(), self.config.scheduler
-        )
+        return configure_optimizers(self.config.optimizer, self.parameters(), self.config.scheduler)

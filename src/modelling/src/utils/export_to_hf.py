@@ -47,9 +47,7 @@ def export_to_huggingface(
 
     # Extract weights (strip "model." prefix from MetaModule)
     print("Extracting model weights...")
-    weights = {
-        k[6:]: v for k, v in ckpt["state_dict"].items() if k.startswith("model.")
-    }
+    weights = {k[6:]: v for k, v in ckpt["state_dict"].items() if k.startswith("model.")}
 
     # Create model and load weights
     print("Creating model and loading weights...")
@@ -63,9 +61,7 @@ def export_to_huggingface(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Export Lightning checkpoint to HuggingFace Hub"
-    )
+    parser = argparse.ArgumentParser(description="Export Lightning checkpoint to HuggingFace Hub")
     parser.add_argument(
         "--checkpoint",
         type=str,

@@ -9,9 +9,7 @@ from .utils import load_config_file
 
 class CreateHuggingFaceDatasetRepoConfig(BaseModel):
     repo_name: str = Field(..., description="Dataset repository name")
-    token: Optional[str] = Field(
-        None, description="HF token; falls back to HF_TOKEN env"
-    )
+    token: Optional[str] = Field(None, description="HF token; falls back to HF_TOKEN env")
     private: bool = Field(False, description="Whether the repo should be private")
     organization: Optional[str] = Field(None, description="Organization name, if any")
 
@@ -27,9 +25,7 @@ def create_huggingface_dataset_repo(
     if token is None:
         token = os.getenv("HF_TOKEN")
         if token is None:
-            raise ValueError(
-                "Hugging Face token not provided. Set HF_TOKEN or pass --token."
-            )
+            raise ValueError("Hugging Face token not provided. Set HF_TOKEN or pass --token.")
 
     api = HfApi(token=token)
 

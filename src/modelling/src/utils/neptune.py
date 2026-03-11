@@ -71,12 +71,8 @@ def download_checkpoint(
 
     if not auto_ckpt.exists():
         print(f"    → Downloading `{checkpoint_name}` from run `{run_id}`…")
-        run = neptune.init_run(
-            with_id=run_id, project=neptune_project, api_token=api_token
-        )
-        run[f"training/model/checkpoints/{checkpoint_name}"].download(
-            destination=str(auto_ckpt)
-        )
+        run = neptune.init_run(with_id=run_id, project=neptune_project, api_token=api_token)
+        run[f"training/model/checkpoints/{checkpoint_name}"].download(destination=str(auto_ckpt))
         run.stop()
         print("    → Download complete.")
     else:

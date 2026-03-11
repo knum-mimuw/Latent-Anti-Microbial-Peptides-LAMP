@@ -2,15 +2,11 @@ from typing import Any, Optional
 import importlib
 
 
-def get_obj_from_import_path(
-    import_path: str, validation_prefix: Optional[str] = None
-) -> Any:
+def get_obj_from_import_path(import_path: str, validation_prefix: Optional[str] = None) -> Any:
     """Get an object from a import path."""
     module_name, obj_name = import_path.rsplit(".", 1)
     if validation_prefix and not obj_name.startswith(validation_prefix):
-        raise ValueError(
-            f"Object name {obj_name} does not start with {validation_prefix}."
-        )
+        raise ValueError(f"Object name {obj_name} does not start with {validation_prefix}.")
     module = importlib.import_module(module_name)
     return getattr(module, obj_name)
 

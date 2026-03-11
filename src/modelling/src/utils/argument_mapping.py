@@ -15,8 +15,7 @@ def _map_keys(
             result[arg_name] = source[source_key]
         else:
             raise KeyError(
-                f"{source_name} key '{source_key}' not found. "
-                f"Available keys: {list(source.keys())}"
+                f"{source_name} key '{source_key}' not found. Available keys: {list(source.keys())}"
             )
     return result
 

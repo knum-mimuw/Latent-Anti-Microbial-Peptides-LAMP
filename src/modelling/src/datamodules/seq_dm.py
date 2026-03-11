@@ -10,9 +10,7 @@ from ..utils.importing import get_obj_from_import_path
 class DatasetConfig(BaseModel):
     """Configuration for a single dataset."""
 
-    hf_kwargs: Dict[str, Any] = Field(
-        ..., description="Arguments passed to load_dataset()"
-    )
+    hf_kwargs: Dict[str, Any] = Field(..., description="Arguments passed to load_dataset()")
     shuffle_kwargs: Optional[Dict[str, Any]] = Field(
         default=None,
         description="Arguments for .shuffle() (shuffle: bool, buffer_size: int)",
@@ -23,9 +21,7 @@ class CollateConfig(BaseModel):
     """Configuration for a collate function."""
 
     collate_class: str = Field(..., description="Import path to collate class")
-    collate_config_class: str = Field(
-        ..., description="Import path to collate config class"
-    )
+    collate_config_class: str = Field(..., description="Import path to collate config class")
     collate_kwargs: Dict[str, Any] = Field(..., description="Collate config arguments")
 
 
@@ -78,9 +74,7 @@ class SequenceDataModule(LightningDataModule):
         if isinstance(ds, dict):
             split = dataset_config.hf_kwargs.get("split")
             if split is None:
-                raise ValueError(
-                    "Dataset has multiple splits but no split specified in config"
-                )
+                raise ValueError("Dataset has multiple splits but no split specified in config")
             ds = ds[split]
 
         # Apply shuffling if shuffle_kwargs provided
@@ -114,14 +108,12 @@ class SequenceDataModule(LightningDataModule):
 
             if self.config.val_datasets:
                 self.val_datasets = {
-                    name: self._load_dataset(cfg)
-                    for name, cfg in self.config.val_datasets.items()
+                    name: self._load_dataset(cfg) for name, cfg in self.config.val_datasets.items()
                 }
 
         if stage in (None, "test") and self.config.test_datasets:
             self.test_datasets = {
-                name: self._load_dataset(cfg)
-                for name, cfg in self.config.test_datasets.items()
+                name: self._load_dataset(cfg) for name, cfg in self.config.test_datasets.items()
             }
 
     def train_dataloader(self) -> DataLoader:
@@ -148,9 +140,7 @@ class SequenceDataModule(LightningDataModule):
 
         collate_fn = self._get_collate_fn()
         return {
-            name: DataLoader(
-                dataset, collate_fn=collate_fn, **self.config.val_dataloader_kwargs
-            )
+            name: DataLoader(dataset, collate_fn=collate_fn, **self.config.val_dataloader_kwargs)
             for name, dataset in self.val_datasets.items()
         }
 
@@ -166,8 +156,6 @@ class SequenceDataModule(LightningDataModule):
 
         collate_fn = self._get_collate_fn()
         return {
-            name: DataLoader(
-                dataset, collate_fn=collate_fn, **self.config.test_dataloader_kwargs
-            )
+            name: DataLoader(dataset, collate_fn=collate_fn, **self.config.test_dataloader_kwargs)
             for name, dataset in self.test_datasets.items()
         }

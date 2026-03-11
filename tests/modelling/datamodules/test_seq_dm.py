@@ -80,9 +80,7 @@ def test_dataloader_config():
 
 def test_sequence_data_module_initialization():
     """Test SequenceDataModule initialization with different configurations."""
-    train_config = HFDatasetItemConfig(
-        name="train", cfg=HFDatasetConfig(path="train-dataset")
-    )
+    train_config = HFDatasetItemConfig(name="train", cfg=HFDatasetConfig(path="train-dataset"))
 
     # Test minimal config
     config = SequenceDataModuleConfig(train_datasets=[train_config])
@@ -91,12 +89,8 @@ def test_sequence_data_module_initialization():
     assert dm.train_dataset is None
 
     # Test with all dataset types
-    val_config = HFDatasetItemConfig(
-        name="val", cfg=HFDatasetConfig(path="val-dataset")
-    )
-    test_config = HFDatasetItemConfig(
-        name="test", cfg=HFDatasetConfig(path="test-dataset")
-    )
+    val_config = HFDatasetItemConfig(name="val", cfg=HFDatasetConfig(path="val-dataset"))
+    test_config = HFDatasetItemConfig(name="test", cfg=HFDatasetConfig(path="test-dataset"))
 
     full_config = SequenceDataModuleConfig(
         train_datasets=[train_config],

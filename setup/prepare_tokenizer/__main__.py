@@ -72,9 +72,7 @@ def run_command(
     skip_build: bool = typer.Option(
         False, "--skip-build", help="Skip building (use existing directory)"
     ),
-    skip_upload: bool = typer.Option(
-        False, "--skip-upload", help="Skip uploading to HF Hub"
-    ),
+    skip_upload: bool = typer.Option(False, "--skip-upload", help="Skip uploading to HF Hub"),
 ) -> None:
     """Build, upload, and optionally delete tokenizer in one command."""
     hub_readme: Optional[Path] = None
@@ -119,9 +117,7 @@ def run_command(
     # Upload
     if not skip_upload:
         if not repo_id:
-            typer.echo(
-                "❌ --repo-id is required for upload (or set in config)", err=True
-            )
+            typer.echo("❌ --repo-id is required for upload (or set in config)", err=True)
             raise typer.Exit(1)
 
         typer.echo("📤 Uploading tokenizer...")

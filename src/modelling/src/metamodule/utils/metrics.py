@@ -80,12 +80,10 @@ def accumulate_outputs(
         state.accumulated_batches[stage] = []
 
     outputs_copy = {
-        k: v.detach().cpu() if isinstance(v, torch.Tensor) else v
-        for k, v in outputs.items()
+        k: v.detach().cpu() if isinstance(v, torch.Tensor) else v for k, v in outputs.items()
     }
     batch_copy = {
-        k: v.detach().cpu() if isinstance(v, torch.Tensor) else v
-        for k, v in batch.items()
+        k: v.detach().cpu() if isinstance(v, torch.Tensor) else v for k, v in batch.items()
     }
     state.accumulated_outputs[stage].append(outputs_copy)
     state.accumulated_batches[stage].append(batch_copy)
@@ -93,9 +91,7 @@ def accumulate_outputs(
     state.last_batches[stage] = batch
 
 
-def get_accumulated_data(
-    stage: str, state: MetricState
-) -> tuple[Dict[str, Any], Dict[str, Any]]:
+def get_accumulated_data(stage: str, state: MetricState) -> tuple[Dict[str, Any], Dict[str, Any]]:
     """Get accumulated outputs and batches for a stage."""
     outputs_list = state.accumulated_outputs.get(stage, [])
     batches_list = state.accumulated_batches.get(stage, [])
@@ -151,9 +147,7 @@ def compute_metrics(
     # Compute metrics that should be computed at this point
     for metric_name, metric_info in metrics.items():
         metric_config = metric_info["config"]
-        if should_compute_metric(
-            metric_name, metric_config, stage, is_epoch_end, state
-        ):
+        if should_compute_metric(metric_name, metric_config, stage, is_epoch_end, state):
             try:
                 metric_fn = metric_info["fn"]
                 metric_values = metric_fn(outputs, batch)

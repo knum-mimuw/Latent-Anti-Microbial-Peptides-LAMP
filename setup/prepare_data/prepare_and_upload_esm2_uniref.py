@@ -76,9 +76,7 @@ def prepare_esm2_short_sequences_for_splits(
     if not cfg.splits:
         raise ValueError("splits list cannot be empty")
     return {
-        split_name: prepare_esm2_short_sequences(
-            cfg=cfg.model_copy(update={"split": split_name})
-        )
+        split_name: prepare_esm2_short_sequences(cfg=cfg.model_copy(update={"split": split_name}))
         for split_name in cfg.splits
     }
 
@@ -145,9 +143,7 @@ def prepare_and_upload_esm2_uniref_command(
     streams = prepare_esm2_short_sequences_for_splits(prepare_cfg)
 
     # Upload as subset (subset_name is always required)
-    typer.echo(
-        f"📤 Uploading as subset '{upload_cfg.subset_name}' under {upload_cfg.repo_id}..."
-    )
+    typer.echo(f"📤 Uploading as subset '{upload_cfg.subset_name}' under {upload_cfg.repo_id}...")
     upload_streams_to_huggingface_subset(
         streams,
         repo_id=upload_cfg.repo_id,
@@ -170,7 +166,7 @@ def _demo():
     print("\n📊 Sample from train (first 3 items):")
     count = 0
     for seq in streams["train"]:
-        print(f"  {count+1}. {seq['ur50_id']} ({seq['length']} AA)")
+        print(f"  {count + 1}. {seq['ur50_id']} ({seq['length']} AA)")
         print(f"     {seq['sequence']}")
         count += 1
         if count >= 3:

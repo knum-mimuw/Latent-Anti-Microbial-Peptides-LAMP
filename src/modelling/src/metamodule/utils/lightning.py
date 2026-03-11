@@ -26,9 +26,7 @@ def configure_optimizers(
     optimizer_class = get_obj_from_import_path(optimizer_config.optimizer_class_path)
     optimizer = optimizer_class(parameters, **optimizer_config.optimizer_kwargs)
     if scheduler_config:
-        scheduler_class = get_obj_from_import_path(
-            scheduler_config.scheduler_class_path
-        )
+        scheduler_class = get_obj_from_import_path(scheduler_config.scheduler_class_path)
         scheduler = scheduler_class(optimizer, **scheduler_config.scheduler_kwargs)
         return {"optimizer": optimizer, "lr_scheduler": scheduler}
     else:
