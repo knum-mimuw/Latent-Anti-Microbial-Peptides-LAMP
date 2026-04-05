@@ -12,7 +12,7 @@ from typing import NamedTuple
 import yaml
 from zenml import step
 
-from .._pipeline_utils import load_run_config
+from .._pipeline_utils import lamp_repo_root, load_run_config
 
 
 class TrainResult(NamedTuple):
@@ -41,7 +41,7 @@ def train(config_paths: list[str], run_config_path: str) -> TrainResult:
     Returns:
         Structured checkpoint and MLflow coordinates written by training.
     """
-    repo_root = Path(__file__).resolve().parents[3]
+    repo_root = lamp_repo_root()
     run_config = load_run_config(run_config_path)
     with tempfile.TemporaryDirectory(prefix="lamp-train-manifest-") as temp_dir:
         manifest_path = Path(temp_dir) / "training_manifest.json"

@@ -25,7 +25,7 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
 3. Create a per-run config file:
 
    ```bash
-   cp src/pipelines/configs/run/example.yaml /tmp/lamp-run.yaml
+   cp src/pipelines/pipelines/configs/run/example.yaml /tmp/lamp-run.yaml
    ```
 
 ## Usage
@@ -168,13 +168,16 @@ The pipelines package contains **thin wrappers** that call into the modelling
 package's public API or CLI. The modelling package has **zero ZenML imports**.
 
 ```
-src/pipelines/          (depends on zenml + lamp-modelling)
-├── training.py         # @pipeline: training_pipeline
-├── publish_hf.py       # @pipeline: publish_hf_pipeline
-├── train_and_publish.py # @pipeline: train_and_optional_publish_pipeline
-└── steps/
-    ├── train_step.py          # @step: runs training and reads the manifest
-    └── publish_hf_step.py     # @step: exports MLflow artifacts to HF
+src/pipelines/                    # workspace member (depends on zenml + lamp-modelling)
+├── pyproject.toml
+└── pipelines/                    # import package ``pipelines``
+    ├── training.py             # @pipeline: training_pipeline
+    ├── publish_hf.py           # @pipeline: publish_hf_pipeline
+    ├── train_and_publish.py    # @pipeline: train_and_optional_publish_pipeline
+    ├── configs/run/example.yaml
+    └── steps/
+        ├── train_step.py       # @step: runs training and reads the manifest
+        └── publish_hf_step.py  # @step: exports MLflow artifacts to HF
 ```
 
 ## Optional: MLflow Server

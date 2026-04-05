@@ -8,6 +8,17 @@ from pathlib import Path
 import yaml
 
 
+def lamp_repo_root() -> Path:
+    """Return the LAMP workspace git root (directory containing ``src/modelling``)."""
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "src" / "modelling" / "pyproject.toml").is_file():
+            return parent
+    raise RuntimeError(
+        "Could not locate LAMP repository root (expected src/modelling/pyproject.toml)."
+    )
+
+
 @dataclass(frozen=True)
 class MlflowRunConfig:
     """Run-scoped MLflow identity."""
