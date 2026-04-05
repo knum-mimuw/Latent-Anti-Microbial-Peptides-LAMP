@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.12"
 
 [options]
-exclude-newer = "2026-03-29T07:54:19.382651651Z"
+exclude-newer = "2026-03-29T11:11:34.267053256Z"
 exclude-newer-span = "P7D"
 
 [manifest]
@@ -11,6 +11,7 @@ members = [
     "lamp",
     "lamp-modelling",
     "lamp-pep-compass-jr",
+    "lamp-pipelines",
     "lamp-setup",
 ]
 
@@ -1123,7 +1124,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "bcrypt" },
-    { name = "mlflow" },
     { name = "passlib" },
     { name = "pymysql" },
     { name = "pytest" },
@@ -1134,13 +1134,13 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mlflow" },
     { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "bcrypt", specifier = ">=5.0.0" },
-    { name = "mlflow", specifier = ">=3.10.1" },
     { name = "passlib", specifier = ">=1.7.4" },
     { name = "pymysql", specifier = ">=1.1.2" },
     { name = "pytest", specifier = ">=8.4.1" },
@@ -1150,7 +1150,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ruff", specifier = ">=0.5.0" }]
+dev = [
+    { name = "mlflow", specifier = ">=3.10.1" },
+    { name = "ruff", specifier = ">=0.5.0" },
+]
 
 [[package]]
 name = "lamp-modelling"
@@ -1159,7 +1162,9 @@ source = { editable = "src/modelling" }
 dependencies = [
     { name = "datasets" },
     { name = "einops" },
+    { name = "huggingface-hub" },
     { name = "jsonargparse", extra = ["signatures"] },
+    { name = "mlflow" },
     { name = "pydantic" },
     { name = "pytorch-lightning" },
     { name = "torch" },
@@ -1170,7 +1175,9 @@ dependencies = [
 requires-dist = [
     { name = "datasets", specifier = ">=2.0.0" },
     { name = "einops", specifier = ">=0.8.1" },
+    { name = "huggingface-hub", specifier = ">=0.35.3" },
     { name = "jsonargparse", extras = ["signatures"], specifier = ">=4.44.0" },
+    { name = "mlflow", specifier = ">=3.10.1" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pytorch-lightning", specifier = ">=2.5.5" },
     { name = "torch", specifier = ">=2.9.0" },
@@ -1181,6 +1188,25 @@ requires-dist = [
 name = "lamp-pep-compass-jr"
 version = "0.1.0"
 source = { virtual = "src/pep_compass_jr" }
+
+[[package]]
+name = "lamp-pipelines"
+version = "0.1.0"
+source = { editable = "src/pipelines" }
+dependencies = [
+    { name = "lamp-modelling" },
+    { name = "mlflow" },
+    { name = "pyyaml" },
+    { name = "zenml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lamp-modelling", editable = "src/modelling" },
+    { name = "mlflow", specifier = ">=3.10.1" },
+    { name = "pyyaml", specifier = ">=6.0.0" },
+    { name = "zenml", extras = ["mlflow"], specifier = ">=0.94.0" },
+]
 
 [[package]]
 name = "lamp-setup"
