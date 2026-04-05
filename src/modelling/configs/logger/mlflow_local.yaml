@@ -2,5 +2,5 @@ trainer:
   logger:
     - class_path: pytorch_lightning.loggers.mlflow.MLFlowLogger
       init_args:
-        experiment_name: grugru_vae
+        experiment_name: lamp
         log_model: false

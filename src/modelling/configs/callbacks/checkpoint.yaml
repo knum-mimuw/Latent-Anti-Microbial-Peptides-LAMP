@@ -1,0 +1,11 @@
+trainer:
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        dirpath: checkpoints
+        filename: "{epoch}-{step}-{val/loss:.4f}"
+        monitor: val/loss
+        mode: min
+        save_top_k: 3
+        save_last: true
+    - class_path: modelling.src.callbacks.training_manifest.TrainingManifestCallback
