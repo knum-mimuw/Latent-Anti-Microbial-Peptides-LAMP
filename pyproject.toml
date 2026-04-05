@@ -5,8 +5,14 @@ description = "LAMP workspace with multiple packages for antimicrobial peptide m
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "bcrypt>=5.0.0",
+    "mlflow>=3.10.1",
+    "passlib>=1.7.4",
+    "pymysql>=1.1.2",
     "pytest>=8.4.1",
-    "ruff>=0.12.8",
+    "sqlalchemy-utils>=0.42.1",
+    "sqlmodel>=0.0.37",
+    "zenml[mlflow,pytorch-lightning]>=0.94.0",
 ]
 
 [build-system]
@@ -45,6 +51,9 @@ markers = [
 ]
 
 [tool.uv]
+# Dependency cooldown: only consider releases older than this window (uv ≥0.9.17).
+exclude-newer = "7 days"
+required-version = ">=0.9.17"
 dev-dependencies = [
   "ruff>=0.5.0",
 ]

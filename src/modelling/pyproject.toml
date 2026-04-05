@@ -10,7 +10,6 @@ dependencies = [
     "datasets>=2.0.0",
     "pydantic>=2.0.0",
     "jsonargparse[signatures]>=4.44.0",
-    "neptune>=1.14.0",
     "einops>=0.8.1",
     "transformers>=4.57.3",
 ]
