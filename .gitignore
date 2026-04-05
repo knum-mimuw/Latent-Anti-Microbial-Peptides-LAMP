@@ -35,7 +35,17 @@ lightning_logs/
 .DS_Store
 Thumbs.db
 
+# MLflow / ZenML local stores
+mlflow-store/
+mlruns/
+checkpoints/
+zenml-artifacts/
+.zen/
+.mlflow-cache/
+tmp-mlruns/
+
+# Neptune client local state (legacy runs)
+**/.neptune/
+
 # dev directory
 dev/
-
-*.neptune/
