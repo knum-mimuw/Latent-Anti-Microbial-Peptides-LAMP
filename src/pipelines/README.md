@@ -25,7 +25,7 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
 3. Create a per-run config file:
 
    ```bash
-   cp src/pipelines/pipelines/configs/run/example.yaml /tmp/lamp-run.yaml
+   cp src/pipelines/pipelines/configs/run/grugruval.yaml /tmp/lamp-run.yaml
    ```
 
 ## Usage
@@ -174,7 +174,7 @@ src/pipelines/                    # workspace member (depends on zenml + lamp-mo
     ├── training.py             # @pipeline: training_pipeline
     ├── publish_hf.py           # @pipeline: publish_hf_pipeline
     ├── train_and_publish.py    # @pipeline: train_and_optional_publish_pipeline
-    ├── configs/run/example.yaml
+    ├── configs/run/grugruval.yaml
     └── steps/
         ├── train_step.py       # @step: runs training and reads the manifest
         └── publish_hf_step.py  # @step: exports MLflow artifacts to HF

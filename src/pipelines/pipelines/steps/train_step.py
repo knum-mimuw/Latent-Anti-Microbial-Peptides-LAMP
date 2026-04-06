@@ -1,7 +1,5 @@
 """Training step -- thin wrapper around the standalone Lightning CLI."""
 
-from __future__ import annotations
-
 import json
 import os
 import subprocess

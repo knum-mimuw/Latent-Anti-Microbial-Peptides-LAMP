@@ -6,8 +6,8 @@ zenml:
   model_version: run-20260405
 
 huggingface:
-  repo_id: your-org/lamp-grugru-vae
+  repo_id: pszmk/lamp-grugru-vae
   revision: release/run-20260405
   tag: run-20260405
-  model_card_title: LAMP GRU-VAE
+  model_card_title: LAMP GURGRU-VAE
   private: false
