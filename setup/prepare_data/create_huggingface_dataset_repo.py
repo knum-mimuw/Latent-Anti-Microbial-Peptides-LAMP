@@ -1,17 +1,18 @@
 import os
 from pathlib import Path
-from typing import Optional, Any, Dict
-from huggingface_hub import HfApi, create_repo
+
 import typer
+from huggingface_hub import HfApi, create_repo
 from pydantic import BaseModel, Field
+
 from .utils import load_config_file
 
 
 class CreateHuggingFaceDatasetRepoConfig(BaseModel):
     repo_name: str = Field(..., description="Dataset repository name")
-    token: Optional[str] = Field(None, description="HF token; falls back to HF_TOKEN env")
+    token: str | None = Field(None, description="HF token; falls back to HF_TOKEN env")
     private: bool = Field(False, description="Whether the repo should be private")
-    organization: Optional[str] = Field(None, description="Organization name, if any")
+    organization: str | None = Field(None, description="Organization name, if any")
 
 
 def create_huggingface_dataset_repo(

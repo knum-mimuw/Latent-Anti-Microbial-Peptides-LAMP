@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
-import inspect
 import importlib.metadata
+import inspect
 import json
 import shutil
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping, TypedDict
+from typing import Any, TypedDict
 
 import torch
 

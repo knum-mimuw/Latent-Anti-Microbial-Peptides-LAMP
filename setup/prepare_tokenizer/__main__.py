@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import shutil
 from pathlib import Path
-from typing import Optional
 
 import typer
 
@@ -34,7 +33,7 @@ app.command("upload")(upload_tokenizer_command)
 
 @app.command("run")
 def run_command(
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         "-c",
@@ -50,7 +49,7 @@ def run_command(
         "-o",
         help="Output directory for tokenizer files",
     ),
-    repo_id: Optional[str] = typer.Option(
+    repo_id: str | None = typer.Option(
         None,
         "--repo-id",
         "-r",
@@ -63,7 +62,7 @@ def run_command(
         "-m",
         help="Commit message",
     ),
-    token: Optional[str] = typer.Option(None, "--token", "-t", help="HF API token"),
+    token: str | None = typer.Option(None, "--token", "-t", help="HF API token"),
     delete_after: bool = typer.Option(
         False,
         "--delete-after",
@@ -75,7 +74,7 @@ def run_command(
     skip_upload: bool = typer.Option(False, "--skip-upload", help="Skip uploading to HF Hub"),
 ) -> None:
     """Build, upload, and optionally delete tokenizer in one command."""
-    hub_readme: Optional[Path] = None
+    hub_readme: Path | None = None
 
     if config:
         raw = load_config_file(config)

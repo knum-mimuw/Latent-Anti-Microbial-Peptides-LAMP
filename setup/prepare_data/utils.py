@@ -1,16 +1,16 @@
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 try:
     import yaml  # type: ignore
 except Exception:  # pragma: no cover - optional at runtime
     yaml = None
 
-SequenceItem = Dict[str, Any]
+SequenceItem = dict[str, Any]
 
 
-def load_config_file(config_path: Path) -> Dict[str, Any]:
+def load_config_file(config_path: Path) -> dict[str, Any]:
     """Load a YAML or JSON config file into a dictionary.
 
     Supports .yaml/.yml (requires PyYAML) and .json.

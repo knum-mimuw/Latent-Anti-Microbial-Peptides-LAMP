@@ -63,8 +63,12 @@ def publish_hf_pipeline(
 
 def main() -> None:
     """CLI entry point for the standalone HF publish pipeline."""
-    parser = argparse.ArgumentParser(description="Publish an MLflow checkpoint to Hugging Face via ZenML")
-    parser.add_argument("run_config_path", help="Per-run YAML config for MLflow / HF / ZenML identities")
+    parser = argparse.ArgumentParser(
+        description="Publish an MLflow checkpoint to Hugging Face via ZenML"
+    )
+    parser.add_argument(
+        "run_config_path", help="Per-run YAML config for MLflow / HF / ZenML identities"
+    )
     parser.add_argument("--repo-id", default=None, help="Target HF repo ID")
     parser.add_argument("--run-id", default=None, help="MLflow run ID that owns the checkpoint")
     parser.add_argument(
@@ -88,7 +92,9 @@ def main() -> None:
     parser.add_argument("--commit-message", default=None, help="Optional HF commit message")
     parser.add_argument("--token", default=None, help="Optional HF token override")
     parser.add_argument("--model-card-title", default=None, help="Optional model card title")
-    parser.add_argument("--experiment-name", default=None, help="Optional MLflow experiment name override")
+    parser.add_argument(
+        "--experiment-name", default=None, help="Optional MLflow experiment name override"
+    )
     parser.add_argument(
         "--source-stage",
         default="publish",

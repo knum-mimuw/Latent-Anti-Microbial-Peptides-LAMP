@@ -3,20 +3,20 @@ Optimized integration tests for SequenceDataModule using real datasets.
 These tests use actual data from Hugging Face but limit sample sizes for speed.
 """
 
+from pathlib import Path
+
 import pytest
 import torch
 import yaml
-from pathlib import Path
 from datasets import load_dataset
 
 from modelling.datamodules import (
-    SequenceDataModule,
-    SequenceDataModuleConfig,
+    DataLoaderConfig,
     HFDatasetConfig,
     HFDatasetItemConfig,
-    DataLoaderConfig,
+    SequenceDataModule,
+    SequenceDataModuleConfig,
 )
-
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -26,7 +26,7 @@ from modelling.datamodules import (
 def load_test_config(config_name: str) -> SequenceDataModuleConfig:
     """Load a test configuration from the configs directory."""
     config_path = Path(__file__).parent / "configs" / f"{config_name}.yaml"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_data = yaml.safe_load(f)
     return SequenceDataModuleConfig(**config_data)
 

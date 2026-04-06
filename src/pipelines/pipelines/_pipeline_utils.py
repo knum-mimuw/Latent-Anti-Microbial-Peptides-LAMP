@@ -63,9 +63,7 @@ def load_run_config(run_config_path: str) -> RunConfig:
     mlflow_payload = payload.get("mlflow", {})
     experiment_name = mlflow_payload.get("experiment_name")
     if not experiment_name:
-        raise ValueError(
-            f"Run config {config_path} must define mlflow.experiment_name."
-        )
+        raise ValueError(f"Run config {config_path} must define mlflow.experiment_name.")
 
     zenml_payload = payload.get("zenml", {})
     huggingface_payload = payload.get("huggingface", {})

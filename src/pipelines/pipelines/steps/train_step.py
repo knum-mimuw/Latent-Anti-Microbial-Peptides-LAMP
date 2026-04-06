@@ -99,9 +99,7 @@ def _read_manifest(manifest_path: Path) -> dict[str, str]:
     ]
     missing = [field for field in required_fields if not manifest.get(field)]
     if missing:
-        raise RuntimeError(
-            f"Training manifest is missing required fields: {', '.join(missing)}"
-        )
+        raise RuntimeError(f"Training manifest is missing required fields: {', '.join(missing)}")
 
     return manifest
 

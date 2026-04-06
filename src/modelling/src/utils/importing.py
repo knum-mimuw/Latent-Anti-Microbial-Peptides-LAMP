@@ -1,8 +1,8 @@
-from typing import Any, Optional
 import importlib
+from typing import Any
 
 
-def get_obj_from_import_path(import_path: str, validation_prefix: Optional[str] = None) -> Any:
+def get_obj_from_import_path(import_path: str, validation_prefix: str | None = None) -> Any:
     """Get an object from a import path."""
     module_name, obj_name = import_path.rsplit(".", 1)
     if validation_prefix and not obj_name.startswith(validation_prefix):
@@ -13,10 +13,10 @@ def get_obj_from_import_path(import_path: str, validation_prefix: Optional[str] 
 
 def load_model_from_huggingface(
     model_class_path: str,
-    pretrained_model_name_or_path: Optional[str] = None,
-    config_class_path: Optional[str] = None,
+    pretrained_model_name_or_path: str | None = None,
+    config_class_path: str | None = None,
     load_pretrained: bool = True,
-    config_kwargs: Optional[dict] = None,
+    config_kwargs: dict | None = None,
     **kwargs: Any,
 ) -> Any:
     """Load a model and optionally its config from Hugging Face.
@@ -50,7 +50,7 @@ def load_model_from_huggingface(
         else:
             config = config_class(**(config_kwargs or {}))
     elif not load_pretrained and hasattr(model_class, "config_class"):
-        config_cls = getattr(model_class, "config_class")
+        config_cls = model_class.config_class
         if config_cls is not None:
             config = config_cls(**(config_kwargs or {}))
 

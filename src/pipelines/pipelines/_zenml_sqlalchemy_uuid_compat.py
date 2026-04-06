@@ -34,10 +34,7 @@ def apply() -> None:
         hydrate: bool = True,
         **kwargs: Any,
     ) -> Any:
-        if (
-            isinstance(name_id_or_prefix, str)
-            and is_valid_uuid(name_id_or_prefix)
-        ):
+        if isinstance(name_id_or_prefix, str) and is_valid_uuid(name_id_or_prefix):
             name_id_or_prefix = UUID(name_id_or_prefix)
         return _orig(
             self,

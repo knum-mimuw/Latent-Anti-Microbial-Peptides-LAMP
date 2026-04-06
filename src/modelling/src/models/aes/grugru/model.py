@@ -1,6 +1,6 @@
+
 import torch
 import torch.nn as nn
-from typing import Dict
 from einops import rearrange
 from transformers import PreTrainedModel
 
@@ -133,7 +133,7 @@ class GRUVAE(PreTrainedModel):
         # Initialize weights using HuggingFace's mechanism
         self.post_init()
 
-    def forward(self, input_ids: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
         """Forward pass through VAE.
 
         Args:

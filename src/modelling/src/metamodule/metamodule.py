@@ -8,28 +8,29 @@ Metrics should be handled by callbacks that consume the standardized output form
 returned from training_step/validation_step/test_step.
 """
 
-from typing import Any, Dict, Optional, TypedDict
-from pytorch_lightning import LightningModule
-from pydantic import BaseModel, Field, ConfigDict
-from torch.nn import Module
-import torch
+from typing import Any, TypedDict
 
-from .utils.lightning import OptimizerConfig, SchedulerConfig, configure_optimizers
-from .loss_manager import LossManager, LossManagerConfig
+import torch
+from pydantic import BaseModel, ConfigDict, Field
+from pytorch_lightning import LightningModule
+from torch.nn import Module
+
 from ..utils.importing import get_obj_from_import_path
+from .loss_manager import LossManager, LossManagerConfig
+from .utils.lightning import OptimizerConfig, SchedulerConfig, configure_optimizers
 
 
 class StepOutput(TypedDict):
     """Standardized output format from training/validation/test steps."""
 
-    outputs: Dict[str, Any]
-    loss: Optional[torch.Tensor]
+    outputs: dict[str, Any]
+    loss: torch.Tensor | None
 
 
 class ModelConfig(BaseModel):
     model_class_path: str = Field(..., description="Import path to the model class")
     config_class_path: str = Field(..., description="Import path to the model config class")
-    config: Dict[str, Any] = Field(..., description="Model config")
+    config: dict[str, Any] = Field(..., description="Model config")
 
 
 class MetaModuleConfig(BaseModel):
@@ -43,7 +44,7 @@ class MetaModuleConfig(BaseModel):
     )
 
     optimizer: OptimizerConfig = Field(..., description="Optimizer configuration")
-    scheduler: Optional[SchedulerConfig] = Field(None, description="Scheduler configuration")
+    scheduler: SchedulerConfig | None = Field(None, description="Scheduler configuration")
 
     model_config = ConfigDict(extra="allow")
 
@@ -72,7 +73,7 @@ class MetaModule(LightningModule):
 
         self.loss_manager = LossManager(config.loss_manager.losses)
 
-    def training_step(self, batch: Dict[str, Any], batch_idx: int) -> StepOutput:
+    def training_step(self, batch: dict[str, Any], batch_idx: int) -> StepOutput:
         outputs = self.model(**batch)
         loss_dict = self.loss_manager.compute_losses(outputs, batch)
 
@@ -86,7 +87,7 @@ class MetaModule(LightningModule):
 
         return StepOutput(outputs=outputs, loss=loss_dict["loss"])
 
-    def validation_step(self, batch: Dict[str, Any], batch_idx: int) -> StepOutput:
+    def validation_step(self, batch: dict[str, Any], batch_idx: int) -> StepOutput:
         outputs = self.model(**batch)
         loss_dict = self.loss_manager.compute_losses(outputs, batch)
 
@@ -100,7 +101,7 @@ class MetaModule(LightningModule):
 
         return StepOutput(outputs=outputs)
 
-    def test_step(self, batch: Dict[str, Any], batch_idx: int) -> StepOutput:
+    def test_step(self, batch: dict[str, Any], batch_idx: int) -> StepOutput:
         outputs = self.model(**batch)
         loss_dict = self.loss_manager.compute_losses(outputs, batch)
 

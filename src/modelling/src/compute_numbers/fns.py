@@ -1,7 +1,6 @@
 """Loss computation functions for use with LossManager."""
 
 import torch
-import torch.nn as nn
 
 
 def kl_gauss_unitgauss(mean: torch.Tensor, log_std: torch.Tensor) -> torch.Tensor:

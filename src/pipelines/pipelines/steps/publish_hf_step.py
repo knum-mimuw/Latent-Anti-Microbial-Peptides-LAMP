@@ -99,7 +99,9 @@ def _resolve_publish_source(
 
     resolved_run_id = run_id or manifest.get("run_id")
     resolved_artifact_path = artifact_path or manifest.get("best_checkpoint_artifact_path")
-    resolved_manifest_artifact_path = manifest_artifact_path or manifest.get("manifest_artifact_path")
+    resolved_manifest_artifact_path = manifest_artifact_path or manifest.get(
+        "manifest_artifact_path"
+    )
 
     if not resolved_run_id or not resolved_artifact_path:
         raise ValueError(

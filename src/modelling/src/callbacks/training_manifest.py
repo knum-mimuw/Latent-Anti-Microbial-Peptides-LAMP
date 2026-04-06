@@ -113,9 +113,7 @@ def _build_manifest(
         "last_checkpoint_artifact_path": _artifact_path_for_file(
             checkpoint_artifact_path, last_checkpoint_path
         ),
-        "manifest_artifact_path": _join_artifact_path(
-            manifest_artifact_path, manifest_filename
-        ),
+        "manifest_artifact_path": _join_artifact_path(manifest_artifact_path, manifest_filename),
         "metrics": _serialize_metrics(trainer.callback_metrics),
     }
 
@@ -166,5 +164,3 @@ def _join_artifact_path(prefix: str | None, suffix: str) -> str:
     if not prefix:
         return suffix
     return f"{prefix.rstrip('/')}/{suffix.lstrip('/')}"
-
-

@@ -3,7 +3,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
 
 import typer
 from huggingface_hub import HfApi
@@ -22,8 +21,8 @@ class UploadTokenizerConfig(BaseModel):
     )
     private: bool = Field(False, description="Whether the repo should be private")
     commit_message: str = Field("Upload tokenizer", description="Commit message for the upload")
-    token: Optional[str] = Field(None, description="HF token; falls back to HF_TOKEN env")
-    hub_readme: Optional[str] = Field(None, description="Path to README to upload to the hub")
+    token: str | None = Field(None, description="HF token; falls back to HF_TOKEN env")
+    hub_readme: str | None = Field(None, description="Path to README to upload to the hub")
     delete_after: bool = Field(False, description="Delete local tokenizer directory after upload")
 
 
@@ -32,8 +31,8 @@ def upload_tokenizer(
     repo_id: str,
     private: bool = False,
     commit_message: str = "Upload tokenizer",
-    token: Optional[str] = None,
-    hub_readme: Optional[Path] = None,
+    token: str | None = None,
+    hub_readme: Path | None = None,
     delete_after: bool = False,
 ) -> None:
     """Upload tokenizer directory to Hugging Face Hub."""
@@ -70,7 +69,7 @@ def upload_tokenizer(
 
 
 def upload_tokenizer_command(
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         "-c",
@@ -86,7 +85,7 @@ def upload_tokenizer_command(
         "-d",
         help="Tokenizer directory to upload",
     ),
-    repo_id: Optional[str] = typer.Option(
+    repo_id: str | None = typer.Option(
         None,
         "--repo-id",
         "-r",
@@ -99,7 +98,7 @@ def upload_tokenizer_command(
         "-m",
         help="Commit message",
     ),
-    token: Optional[str] = typer.Option(None, "--token", "-t", help="HF API token"),
+    token: str | None = typer.Option(None, "--token", "-t", help="HF API token"),
     delete_after: bool = typer.Option(
         False,
         "--delete-after",
@@ -107,7 +106,7 @@ def upload_tokenizer_command(
     ),
 ) -> None:
     """Upload tokenizer to Hugging Face Hub."""
-    hub_readme: Optional[Path] = None
+    hub_readme: Path | None = None
 
     if config:
         raw = load_config_file(config)

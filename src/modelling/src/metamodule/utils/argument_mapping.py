@@ -1,13 +1,13 @@
 """Shared utilities for argument mapping from batch/output keys to function arguments."""
 
-from typing import Any, Dict
+from typing import Any
 
 
 def _map_keys(
-    source: Dict[str, Any],
-    mapping: Dict[str, str],
+    source: dict[str, Any],
+    mapping: dict[str, str],
     source_name: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Map keys from source dictionary to function arguments."""
     result = {}
     for source_key, arg_name in mapping.items():
@@ -21,11 +21,11 @@ def _map_keys(
 
 
 def prepare_function_args(
-    outputs: Dict[str, Any],
-    batch: Dict[str, Any],
-    batch_key_mapping: Dict[str, str],
-    output_key_mapping: Dict[str, str],
-) -> Dict[str, Any]:
+    outputs: dict[str, Any],
+    batch: dict[str, Any],
+    batch_key_mapping: dict[str, str],
+    output_key_mapping: dict[str, str],
+) -> dict[str, Any]:
     """
     Prepare arguments for function call by mapping keys.
 
