@@ -4,14 +4,20 @@ Usage::
 
     uv run python -m pipelines.training \\
         path/to/run-config.yaml \\
-        configs/trainer/grugru_vae.yaml \\
-        configs/logger/mlflow_local.yaml \\
-        configs/callbacks/checkpoint.yaml
+        src/modelling/configs/trainer/grugru_vae.yaml \\
+        src/modelling/configs/model/grugru_vae.yaml \\
+        src/modelling/configs/data/grugru_vae.yaml \\
+        src/modelling/configs/logger/mlflow_local.yaml \\
+        src/modelling/configs/callbacks/checkpoint.yaml
 """
 
 from __future__ import annotations
 
 import sys
+
+from ._zenml_sqlalchemy_uuid_compat import apply as _apply_zenml_uuid_compat
+
+_apply_zenml_uuid_compat()
 
 from zenml import pipeline
 
