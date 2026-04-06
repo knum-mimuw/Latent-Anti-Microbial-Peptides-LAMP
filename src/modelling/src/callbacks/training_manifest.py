@@ -35,6 +35,8 @@ class TrainingManifestCallback(Callback):
     def on_fit_start(self, trainer: Trainer, pl_module: Any) -> None:
         """Place checkpoints in a run-specific directory before training starts."""
         del pl_module
+        if not trainer.is_global_zero:
+            return
         mlflow_logger = _get_mlflow_logger(trainer)
         checkpoint_callback = _get_checkpoint_callback(trainer)
 
@@ -49,6 +51,8 @@ class TrainingManifestCallback(Callback):
     def on_fit_end(self, trainer: Trainer, pl_module: Any) -> None:
         """Write the manifest and upload checkpoint artifacts to MLflow."""
         del pl_module
+        if not trainer.is_global_zero:
+            return
         mlflow_logger = _get_mlflow_logger(trainer)
         checkpoint_callback = _get_checkpoint_callback(trainer)
 
