@@ -1,0 +1,37 @@
+version: "3"
+
+vars:
+  MLFLOW_UI_PORT: "5000"
+
+tasks:
+  zenml-init:
+    desc: Register the local ZenML stack (scripts/init_zenml_stack.sh)
+    cmds:
+      - ./scripts/init_zenml_stack.sh
+
+  mlflow-server:
+    desc: Run MLflow tracking server with SQLite backend (scripts/start_mlflow_server.sh)
+    cmds:
+      - ./scripts/start_mlflow_server.sh
+
+  mlflow-ui:
+    desc: >-
+      MLflow UI against file:./mlflow-store (no separate server process).
+      For the SQLite-backed server, use task mlflow-server.
+    cmds:
+      - |
+        export MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-file:./mlflow-store}"
+        uv run mlflow ui --host 127.0.0.1 --port {{.MLFLOW_UI_PORT}}
+
+  mlflow-ui-stop:
+    desc: Stop process listening on MLFLOW_UI_PORT (frees the port; same default as mlflow-ui / mlflow-server)
+    cmds:
+      - |
+        PORT="{{.MLFLOW_UI_PORT}}"
+        if command -v fuser >/dev/null 2>&1; then
+          fuser -k "${PORT}/tcp" 2>/dev/null || true
+        else
+          for pid in $(lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null); do
+            [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+          done
+        fi
