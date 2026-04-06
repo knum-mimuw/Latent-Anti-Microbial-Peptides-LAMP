@@ -5,7 +5,8 @@ description = "LAMP workspace with multiple packages for antimicrobial peptide m
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "bcrypt>=5.0.0",
+    # passlib (used by ZenML for default-user bootstrap) is incompatible with bcrypt 5.x.
+    "bcrypt>=4.0.1,<5",
     "passlib>=1.7.4",
     "pymysql>=1.1.2",
     "pytest>=8.4.1",
