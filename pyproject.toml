@@ -50,14 +50,16 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
+[dependency-groups]
+dev = [
+  "ruff>=0.5.0",
+  "mlflow>=3.10.1",
+]
+
 [tool.uv]
 # Dependency cooldown: only consider releases older than this window (uv ≥0.9.17).
 exclude-newer = "7 days"
 required-version = ">=0.9.17"
-dev-dependencies = [
-  "ruff>=0.5.0",
-  "mlflow>=3.10.1",
-]
 
 [tool.uv.workspace]
 # Include the setup package (data preparation tools) as a workspace member
