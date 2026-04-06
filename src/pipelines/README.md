@@ -32,14 +32,20 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
 
 ### Standalone (no ZenML)
 
-Training works without ZenML -- just use the Lightning CLI directly:
+Training works without ZenML -- just use the Lightning CLI directly. Pass explicit
+`--config` files for trainer, model, data, and any logger/callbacks (nothing is
+auto-discovered). From the **repository root**:
 
 ```bash
 uv run modelling fit \
-  --config configs/trainer/grugru_vae.yaml \
-  --config configs/logger/mlflow_local.yaml \
-  --config configs/callbacks/checkpoint.yaml
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml \
+  --config src/modelling/configs/logger/mlflow_local.yaml \
+  --config src/modelling/configs/callbacks/checkpoint.yaml
 ```
+
+See `src/modelling/README.md` for the same command using paths under `src/modelling/`.
 
 ### Via ZenML Pipeline
 
@@ -49,9 +55,11 @@ remains the canonical owner of checkpoints and metrics:
 ```bash
 uv run python -m pipelines.training \
   /tmp/lamp-run.yaml \
-  configs/trainer/grugru_vae.yaml \
-  configs/logger/mlflow_local.yaml \
-  configs/callbacks/checkpoint.yaml
+  src/modelling/configs/trainer/grugru_vae.yaml \
+  src/modelling/configs/model/grugru_vae.yaml \
+  src/modelling/configs/data/grugru_vae.yaml \
+  src/modelling/configs/logger/mlflow_local.yaml \
+  src/modelling/configs/callbacks/checkpoint.yaml
 ```
 
 This flow writes a deterministic `training_manifest.json` during training and
@@ -94,9 +102,11 @@ best checkpoint after it finishes:
 ```bash
 uv run python -m pipelines.train_and_publish \
   --run-config /tmp/lamp-run.yaml \
-  configs/trainer/grugru_vae.yaml \
-  configs/logger/mlflow_local.yaml \
-  configs/callbacks/checkpoint.yaml \
+  src/modelling/configs/trainer/grugru_vae.yaml \
+  src/modelling/configs/model/grugru_vae.yaml \
+  src/modelling/configs/data/grugru_vae.yaml \
+  src/modelling/configs/logger/mlflow_local.yaml \
+  src/modelling/configs/callbacks/checkpoint.yaml \
   --upload-to-hf \
   --tag run-20260405
 ```

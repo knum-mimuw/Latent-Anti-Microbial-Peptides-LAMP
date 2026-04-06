@@ -15,6 +15,21 @@ uv sync --package lamp-setup
 uv sync --all-packages
 ```
 
+## Training
+
+From the repository root, with `lamp-modelling` installed (e.g. `uv sync --all-packages`):
+
+```bash
+uv run modelling fit \
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml \
+  --config src/modelling/configs/logger/grugru_vae.yaml \
+  --config src/modelling/configs/callbacks/checkpoint.yaml
+```
+
+See `src/modelling/README.md` for MLflow, validation, and other commands.
+
 ## Secret Management with direnv
 
 For managing environment variables and secrets (like `HF_TOKEN`), you can use [direnv](https://direnv.net/):

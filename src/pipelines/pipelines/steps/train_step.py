@@ -27,9 +27,10 @@ class TrainResult(NamedTuple):
 def train(config_paths: list[str], run_config_path: str) -> TrainResult:
     """Run Lightning training via CLI and return manifest-derived outputs.
 
-    This executes the exact same command you would run manually::
+    This executes the same command you would run manually (explicit ``--config``
+    paths for trainer, model, data, logger, callbacks as needed)::
 
-        modelling fit --config configs/trainer/... --config configs/logger/...
+        uv run modelling fit --config <trainer.yaml> --config <model.yaml> ...
 
     Args:
         config_paths: One or more YAML config file paths to pass to
