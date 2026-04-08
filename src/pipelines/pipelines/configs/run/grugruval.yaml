@@ -1,5 +1,5 @@
 mlflow:
-  experiment_name: lamp-grugru-vae-dev
+  experiment_name: lamp-grugru-vae
 
 zenml:
   model_name: lamp-grugru-vae
