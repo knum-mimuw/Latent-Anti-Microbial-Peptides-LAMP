@@ -19,9 +19,7 @@ tasks:
       MLflow UI against file:./mlflow-store (no separate server process).
       For the SQLite-backed server, use task mlflow-server.
     cmds:
-      - |
-        export MLFLOW_TRACKING_URI="${MLFLOW_TRACKING_URI:-file:./mlflow-store}"
-        uv run mlflow ui --host 127.0.0.1 --port {{.MLFLOW_UI_PORT}}
+      - uv run mlflow ui --backend-store-uri "${MLFLOW_TRACKING_URI:-file:./mlflow-store}" --host 127.0.0.1 --port {{.MLFLOW_UI_PORT}}
 
   mlflow-ui-stop:
     desc: Stop process listening on MLFLOW_UI_PORT (frees the port; same default as mlflow-ui / mlflow-server)

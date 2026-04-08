@@ -41,6 +41,7 @@ mlruns/
 checkpoints/
 zenml-artifacts/
 .zen/
+.zenml-store/
 .mlflow-cache/
 tmp-mlruns/
 
