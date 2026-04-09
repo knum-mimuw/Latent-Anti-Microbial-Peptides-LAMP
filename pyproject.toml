@@ -5,8 +5,14 @@ description = "LAMP workspace with multiple packages for antimicrobial peptide m
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    # passlib (used by ZenML for default-user bootstrap) is incompatible with bcrypt 5.x.
+    "bcrypt>=4.0.1,<5",
+    "passlib>=1.7.4",
+    "pymysql>=1.1.2",
     "pytest>=8.4.1",
-    "ruff>=0.12.8",
+    "sqlalchemy-utils>=0.42.1",
+    "sqlmodel>=0.0.37",
+    "zenml[mlflow,pytorch-lightning]>=0.94.0",
 ]
 
 [build-system]
@@ -44,10 +50,16 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
   "ruff>=0.5.0",
+  "mlflow>=3.10.1",
 ]
+
+[tool.uv]
+# Dependency cooldown: only consider releases older than this window (uv ≥0.9.17).
+exclude-newer = "7 days"
+required-version = ">=0.9.17"
 
 [tool.uv.workspace]
 # Include the setup package (data preparation tools) as a workspace member
@@ -55,4 +67,8 @@ members = [
   "./setup",
   "src/pep_compass_jr",
   "src/modelling",
+  "src/pipelines",
 ]
+
+[tool.uv.sources]
+lamp-modelling = { workspace = true }

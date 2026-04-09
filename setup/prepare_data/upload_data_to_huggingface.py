@@ -1,9 +1,11 @@
 import os
-from typing import Optional, List, Dict, Any, Iterable, Mapping
-from datasets import Dataset as HFDataset, DatasetDict, Features, Value
+from collections.abc import Iterable, Mapping
+from typing import Any
+
 import typer
-from pydantic import BaseModel, Field, Extra
+from datasets import Dataset as HFDataset, DatasetDict, Features, Value
 from huggingface_hub import HfApi
+from pydantic import BaseModel, Extra, Field
 
 
 class UploadConfig(BaseModel):
@@ -11,10 +13,10 @@ class UploadConfig(BaseModel):
 
     repo_id: str = Field(..., description="Hugging Face dataset repository ID")
     commit_message: str = Field(..., description="Commit message for the upload")
-    token: Optional[str] = Field(
+    token: str | None = Field(
         None, description="Hugging Face token (uses HF_TOKEN env var if None)"
     )
-    columns: Dict[str, str] = Field(..., description="Column mapping for the dataset")
+    columns: dict[str, str] = Field(..., description="Column mapping for the dataset")
     # Subset configuration
     subset_name: str = Field(..., description="Subset name for subset upload")
 
@@ -27,7 +29,7 @@ def upload_dataset_splits_to_huggingface(
     *,
     repo_id: str,
     commit_message: str,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> None:
     """Upload a DatasetDict (multiple splits) to a Hugging Face dataset repository.
 
@@ -51,16 +53,16 @@ def upload_dataset_splits_to_huggingface(
         raise typer.Exit(1)
 
 
-def _generator_from_stream(items: List[Dict[str, Any]], columns: Dict[str, str]):
+def _generator_from_stream(items: list[dict[str, Any]], columns: dict[str, str]):
     """Yield rows mapped according to columns spec from a list of items."""
     for item in items:
-        row: Dict[str, Any] = {}
+        row: dict[str, Any] = {}
         for col, source_field in columns.items():
             row[col] = item.get(source_field)
         yield row
 
 
-def _check_repository_exists(repo_id: str, token: Optional[str] = None) -> bool:
+def _check_repository_exists(repo_id: str, token: str | None = None) -> bool:
     """Check if a Hugging Face dataset repository exists."""
     try:
         api = HfApi(token=token)
@@ -71,12 +73,12 @@ def _check_repository_exists(repo_id: str, token: Optional[str] = None) -> bool:
 
 
 def build_datasetdict_from_streams(
-    streams: Mapping[str, Iterable[Dict[str, Any]]],
+    streams: Mapping[str, Iterable[dict[str, Any]]],
     *,
-    columns: Dict[str, str],
+    columns: dict[str, str],
 ) -> DatasetDict:
     """Build a DatasetDict from split-name -> item stream using Dataset.from_generator."""
-    out: Dict[str, HFDataset] = {}
+    out: dict[str, HFDataset] = {}
 
     # Define features schema with proper data types
     features = Features(
@@ -103,12 +105,12 @@ def build_datasetdict_from_streams(
 
 
 def upload_streams_to_huggingface(
-    streams: Mapping[str, Iterable[Dict[str, Any]]],
+    streams: Mapping[str, Iterable[dict[str, Any]]],
     *,
     repo_id: str,
-    columns: Dict[str, str],
+    columns: dict[str, str],
     commit_message: str,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> None:
     """Upload split streams to HF using Dataset.from_generator per split (low memory)."""
     dsd = build_datasetdict_from_streams(streams, columns=columns)
@@ -118,13 +120,13 @@ def upload_streams_to_huggingface(
 
 
 def upload_streams_to_huggingface_subset(
-    streams: Mapping[str, Iterable[Dict[str, Any]]],
+    streams: Mapping[str, Iterable[dict[str, Any]]],
     *,
     repo_id: str,
     subset_name: str,
-    columns: Dict[str, str],
+    columns: dict[str, str],
     commit_message: str,
-    token: Optional[str] = None,
+    token: str | None = None,
 ) -> None:
     """Upload split streams as a subset under a main dataset repository.
 

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -12,11 +12,11 @@ class TokenizerCollateConfig(BaseModel):
     # tokenized_sequence_column: str = Field(
     #     ..., description="Column containing tokenized sequences"
     # )
-    tokenizer_kwargs: Dict[str, Any] = Field(
+    tokenizer_kwargs: dict[str, Any] = Field(
         default_factory=lambda: {"padding": "longest", "return_tensors": "pt"},
         description="Kwargs passed to tokenizer.__call__() (padding, max_length, truncation, etc.)",
     )
-    preserve_columns: List[str] = Field(
+    preserve_columns: list[str] = Field(
         default_factory=list,
         description="Additional columns to preserve from original batch (as lists)",
     )
@@ -36,7 +36,7 @@ class TokenizerCollate:
             config.tokenizer_path
         )
 
-    def __call__(self, batch: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def __call__(self, batch: list[dict[str, Any]]) -> dict[str, Any]:
         """Collate and tokenize a batch of items.
 
         Args:
@@ -50,7 +50,7 @@ class TokenizerCollate:
         sequences = [item[self.config.sequence_column] for item in batch]
 
         # Aggregate preserved columns
-        output_batch: Dict[str, Any] = {}
+        output_batch: dict[str, Any] = {}
         for col in self.config.preserve_columns:
             output_batch[col] = [item[col] for item in batch if col in item]
 

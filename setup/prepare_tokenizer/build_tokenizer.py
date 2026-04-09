@@ -1,7 +1,6 @@
 # prepare_tokenizer/build_tokenizer.py
 
 from pathlib import Path
-from typing import Optional
 
 import typer
 from pydantic import BaseModel, Field
@@ -68,7 +67,7 @@ def build_tokenizer(
 
 
 def build_tokenizer_command(
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         "-c",

@@ -1,0 +1,15 @@
+[project]
+name = "lamp-pipelines"
+version = "0.1.0"
+description = "ZenML pipeline orchestration for LAMP training workflows"
+requires-python = ">=3.12"
+dependencies = [
+    "lamp-modelling",
+    "zenml[mlflow]>=0.94.0",
+    "mlflow>=3.10.1",
+    "pyyaml>=6.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

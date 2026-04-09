@@ -1,6 +1,6 @@
+
 import torch
 import torch.nn as nn
-from typing import Dict
 from einops import rearrange
 from transformers import PreTrainedModel
 
@@ -30,9 +30,7 @@ class GRUEncoder(nn.Module):
             dropout=config.encoder_dropout if config.encoder_num_layers > 1 else 0,
         )
 
-        encoder_output_dim = config.encoder_hidden_size * (
-            2 if config.encoder_bidirectional else 1
-        )
+        encoder_output_dim = config.encoder_hidden_size * (2 if config.encoder_bidirectional else 1)
         self.mean_linear = nn.Linear(encoder_output_dim, config.latent_dim)
         self.log_std_linear = nn.Linear(encoder_output_dim, config.latent_dim)
 
@@ -135,7 +133,7 @@ class GRUVAE(PreTrainedModel):
         # Initialize weights using HuggingFace's mechanism
         self.post_init()
 
-    def forward(self, input_ids: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
         """Forward pass through VAE.
 
         Args:

@@ -3,20 +3,20 @@ Optimized integration tests for SequenceDataModule using real datasets.
 These tests use actual data from Hugging Face but limit sample sizes for speed.
 """
 
+from pathlib import Path
+
 import pytest
 import torch
 import yaml
-from pathlib import Path
 from datasets import load_dataset
 
 from modelling.datamodules import (
-    SequenceDataModule,
-    SequenceDataModuleConfig,
+    DataLoaderConfig,
     HFDatasetConfig,
     HFDatasetItemConfig,
-    DataLoaderConfig,
+    SequenceDataModule,
+    SequenceDataModuleConfig,
 )
-
 
 # =============================================================================
 # UTILITY FUNCTIONS
@@ -26,7 +26,7 @@ from modelling.datamodules import (
 def load_test_config(config_name: str) -> SequenceDataModuleConfig:
     """Load a test configuration from the configs directory."""
     config_path = Path(__file__).parent / "configs" / f"{config_name}.yaml"
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_data = yaml.safe_load(f)
     return SequenceDataModuleConfig(**config_data)
 
@@ -80,9 +80,7 @@ def test_dataloader_config():
 
 def test_sequence_data_module_initialization():
     """Test SequenceDataModule initialization with different configurations."""
-    train_config = HFDatasetItemConfig(
-        name="train", cfg=HFDatasetConfig(path="train-dataset")
-    )
+    train_config = HFDatasetItemConfig(name="train", cfg=HFDatasetConfig(path="train-dataset"))
 
     # Test minimal config
     config = SequenceDataModuleConfig(train_datasets=[train_config])
@@ -91,12 +89,8 @@ def test_sequence_data_module_initialization():
     assert dm.train_dataset is None
 
     # Test with all dataset types
-    val_config = HFDatasetItemConfig(
-        name="val", cfg=HFDatasetConfig(path="val-dataset")
-    )
-    test_config = HFDatasetItemConfig(
-        name="test", cfg=HFDatasetConfig(path="test-dataset")
-    )
+    val_config = HFDatasetItemConfig(name="val", cfg=HFDatasetConfig(path="val-dataset"))
+    test_config = HFDatasetItemConfig(name="test", cfg=HFDatasetConfig(path="test-dataset"))
 
     full_config = SequenceDataModuleConfig(
         train_datasets=[train_config],

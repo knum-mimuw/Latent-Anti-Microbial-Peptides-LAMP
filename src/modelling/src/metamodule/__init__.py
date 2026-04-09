@@ -1,5 +1,5 @@
+from .loss_manager import LossConfig, LossManager, LossManagerConfig
 from .metamodule import MetaModule, MetaModuleConfig, StepOutput
-from .loss_manager import LossManager, LossManagerConfig, LossConfig
 
 __all__ = [
     "MetaModule",

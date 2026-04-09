@@ -1,16 +1,18 @@
-from typing import Generator, Dict, Any, Optional, List, Iterable
 import os
+from collections.abc import Generator
 from pathlib import Path
+from typing import Any
+
 import typer
 from datasets import load_dataset
+from pydantic import BaseModel, Extra, Field
 from tqdm import tqdm
-from pydantic import BaseModel, Field, Extra
 
-from .utils import SequenceItem, load_config_file
 from .upload_data_to_huggingface import (
-    upload_streams_to_huggingface_subset,
     UploadConfig,
+    upload_streams_to_huggingface_subset,
 )
+from .utils import SequenceItem, load_config_file
 
 
 class PrepareESM2UniRefConfig(BaseModel):
@@ -23,10 +25,10 @@ class PrepareESM2UniRefConfig(BaseModel):
     # Per-call settings for the single-split generator
     split: str = Field("train", description="Dataset split to stream from")
     max_length: int = Field(50, description="Keep sequences with length <= this value")
-    max_sequences: Optional[int] = Field(
+    max_sequences: int | None = Field(
         None, description="Optional cap on number of yielded sequences"
     )
-    splits: List[str] = Field(
+    splits: list[str] = Field(
         default_factory=lambda: ["train", "validation"],
         description="List of dataset splits to process (e.g., train, validation)",
     )
@@ -35,7 +37,7 @@ class PrepareESM2UniRefConfig(BaseModel):
         extra = Extra.allow  # Allow future extensions without breaking
 
 
-def create_sequence_item(item: Dict[str, Any]) -> SequenceItem:
+def create_sequence_item(item: dict[str, Any]) -> SequenceItem:
     """Create a standardized sequence item from ESM-2 dataset item."""
     return {
         "ur50_id": item["ur50_id"],
@@ -50,7 +52,7 @@ def _stream_split(
     dataset_name: str,
     split: str,
     max_length: int,
-    max_sequences: Optional[int],
+    max_sequences: int | None,
 ) -> Generator[SequenceItem, None, None]:
     """Stream one split and yield standardized items with length filter."""
     dataset = load_dataset(dataset_name, split=split, streaming=True)
@@ -68,7 +70,7 @@ def _stream_split(
 
 def prepare_esm2_short_sequences_for_splits(
     cfg: PrepareESM2UniRefConfig,
-) -> Dict[str, Generator[SequenceItem, None, None]]:
+) -> dict[str, Generator[SequenceItem, None, None]]:
     """Prepare generators for multiple splits using only the config.
 
     Returns a dict of split name -> generator of standardized items.
@@ -76,9 +78,7 @@ def prepare_esm2_short_sequences_for_splits(
     if not cfg.splits:
         raise ValueError("splits list cannot be empty")
     return {
-        split_name: prepare_esm2_short_sequences(
-            cfg=cfg.model_copy(update={"split": split_name})
-        )
+        split_name: prepare_esm2_short_sequences(cfg=cfg.model_copy(update={"split": split_name}))
         for split_name in cfg.splits
     }
 
@@ -145,9 +145,7 @@ def prepare_and_upload_esm2_uniref_command(
     streams = prepare_esm2_short_sequences_for_splits(prepare_cfg)
 
     # Upload as subset (subset_name is always required)
-    typer.echo(
-        f"📤 Uploading as subset '{upload_cfg.subset_name}' under {upload_cfg.repo_id}..."
-    )
+    typer.echo(f"📤 Uploading as subset '{upload_cfg.subset_name}' under {upload_cfg.repo_id}...")
     upload_streams_to_huggingface_subset(
         streams,
         repo_id=upload_cfg.repo_id,
@@ -170,7 +168,7 @@ def _demo():
     print("\n📊 Sample from train (first 3 items):")
     count = 0
     for seq in streams["train"]:
-        print(f"  {count+1}. {seq['ur50_id']} ({seq['length']} AA)")
+        print(f"  {count + 1}. {seq['ur50_id']} ({seq['length']} AA)")
         print(f"     {seq['sequence']}")
         count += 1
         if count >= 3:

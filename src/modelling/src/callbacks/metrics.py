@@ -1,20 +1,20 @@
 """Metrics callback for computing metrics with flexible argument mapping."""
 
-from typing import Any, Dict, List, Optional
-from pytorch_lightning.callbacks import Callback
+from typing import Any
+
 from pydantic import BaseModel, Field
-from ..utils.importing import get_obj_from_import_path
-from ..metamodule.utils.argument_mapping import prepare_function_args
+from pytorch_lightning.callbacks import Callback
+
 from ..metamodule.metamodule import StepOutput
+from ..metamodule.utils.argument_mapping import prepare_function_args
+from ..utils.importing import get_obj_from_import_path
 
 
 class MetricConfig(BaseModel):
     """Configuration for a metric function with computation frequency."""
 
-    metric_class_path: str = Field(
-        ..., description="Import path to metric class/function"
-    )
-    metric_kwargs: Optional[Dict[str, Any]] = Field(
+    metric_class_path: str = Field(..., description="Import path to metric class/function")
+    metric_kwargs: dict[str, Any] | None = Field(
         None, description="Arguments for metric initialization"
     )
     name: str = Field(
@@ -22,34 +22,26 @@ class MetricConfig(BaseModel):
         description="Name for this metric (required, allows using same metric function multiple times)",
     )
     # Mapping from batch keys to metric function argument names
-    batch_key_mapping: Dict[str, str] = Field(
+    batch_key_mapping: dict[str, str] = Field(
         ...,
         description="Map batch keys to metric function argument names. "
         "e.g., {'target': 'labels'} maps batch['target'] to metric_fn(labels=...). "
         "Can be empty dict if not using batch data.",
     )
     # Mapping from output keys to metric function argument names
-    output_key_mapping: Dict[str, str] = Field(
+    output_key_mapping: dict[str, str] = Field(
         ...,
         description="Map output keys to metric function argument names. "
         "e.g., {'logits': 'predictions'} maps outputs['logits'] to metric_fn(predictions=...). "
         "Can be empty dict if not using output data.",
     )
     # Frequency options
-    every_n_steps: Optional[int] = Field(
-        None, description="Compute every N training steps"
-    )
-    every_n_epochs: Optional[int] = Field(None, description="Compute every N epochs")
-    on_train_epoch_end: bool = Field(
-        False, description="Compute at end of each training epoch"
-    )
-    on_val_epoch_end: bool = Field(
-        True, description="Compute at end of each validation epoch"
-    )
-    on_test_epoch_end: bool = Field(
-        True, description="Compute at end of each test epoch"
-    )
-    stages: List[str] = Field(
+    every_n_steps: int | None = Field(None, description="Compute every N training steps")
+    every_n_epochs: int | None = Field(None, description="Compute every N epochs")
+    on_train_epoch_end: bool = Field(False, description="Compute at end of each training epoch")
+    on_val_epoch_end: bool = Field(True, description="Compute at end of each validation epoch")
+    on_test_epoch_end: bool = Field(True, description="Compute at end of each test epoch")
+    stages: list[str] = Field(
         default=["val"], description="Stages to compute metric for (train/val/test)"
     )
 
@@ -62,7 +54,7 @@ class MetricsCallback(Callback):
     training_step/validation_step/test_step: {"outputs": ...}
     """
 
-    def __init__(self, metric_configs: List[MetricConfig]):
+    def __init__(self, metric_configs: list[MetricConfig]):
         """
         Initialize metrics callback with metric configurations.
 
@@ -70,7 +62,7 @@ class MetricsCallback(Callback):
             metric_configs: List of MetricConfig objects
         """
         super().__init__()
-        self.metrics: Dict[str, Dict[str, Any]] = {}
+        self.metrics: dict[str, dict[str, Any]] = {}
 
         for metric_cfg in metric_configs:
             # Get metric function/class from import path
@@ -122,8 +114,8 @@ class MetricsCallback(Callback):
         return False
 
     def _compute_metric(
-        self, metric_name: str, outputs: Dict[str, Any], batch: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, metric_name: str, outputs: dict[str, Any], batch: dict[str, Any]
+    ) -> dict[str, Any]:
         """Compute a single metric."""
         metric_info = self.metrics[metric_name]
         metric_args = prepare_function_args(
@@ -133,29 +125,21 @@ class MetricsCallback(Callback):
             output_key_mapping=metric_info["output_key_mapping"],
         )
         metric_value = metric_info["fn"](**metric_args)
-        return (
-            metric_value
-            if isinstance(metric_value, dict)
-            else {metric_name: metric_value}
-        )
+        return metric_value if isinstance(metric_value, dict) else {metric_name: metric_value}
 
     def _process_batch_end(
-        self, trainer, outputs: StepOutput, batch: Dict[str, Any], stage: str
+        self, trainer, outputs: StepOutput, batch: dict[str, Any], stage: str
     ) -> None:
         """Common logic for processing batch-end metrics."""
         for metric_name in self.metrics.keys():
             if self._should_compute_metric(metric_name, stage, False, trainer):
-                metric_values = self._compute_metric(
-                    metric_name, outputs["outputs"], batch
-                )
+                metric_values = self._compute_metric(metric_name, outputs["outputs"], batch)
                 for key, value in metric_values.items():
                     trainer.logger.log_metrics(
                         {f"{stage}/metric/{key}": value}, step=trainer.global_step
                     )
 
-    def on_train_batch_end(
-        self, trainer, pl_module, outputs: StepOutput, batch, batch_idx
-    ) -> None:
+    def on_train_batch_end(self, trainer, pl_module, outputs: StepOutput, batch, batch_idx) -> None:
         self._process_batch_end(trainer, outputs, batch, "train")
 
     def on_validation_batch_end(

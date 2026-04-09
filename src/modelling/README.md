@@ -4,74 +4,134 @@ PyTorch Lightning-based framework for training models with configurable losses a
 
 ## Running Training
 
-Use PyTorch Lightning CLI with configuration files:
+Run commands from the **repository root** (the directory that contains `src/modelling/`).
+You must pass **every** component the CLI needs: at minimum **trainer**, **model**, and **data**.
+Nothing is merged or discovered automatically from filenames.
 
 ```bash
-modelling fit --config configs/trainer/grugru_vae.yaml
+uv run modelling fit \
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml \
+  --config src/modelling/configs/logger/grugru_vae.yaml \
+  --config src/modelling/configs/callbacks/checkpoint.yaml
 ```
 
-Or use the module directly:
+Or the module entry point:
 
 ```bash
-python -m modelling.src fit --config configs/trainer/grugru_vae.yaml
+uv run python -m modelling.src fit \
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml \
+  --config src/modelling/configs/logger/grugru_vae.yaml \
+  --config src/modelling/configs/callbacks/checkpoint.yaml
 ```
 
-Other Lightning commands:
+Other Lightning subcommands need the same `--config` stack (trainer + model + data,
+plus logger/callbacks as needed):
 
 ```bash
-modelling validate --config configs/trainer/grugru_vae.yaml
-modelling test --config configs/trainer/grugru_vae.yaml
-modelling predict --config configs/trainer/grugru_vae.yaml
+uv run modelling validate \
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml
 ```
+
+### Shorter paths (optional)
+
+If you `cd src/modelling`, you can use `configs/...` instead of `src/modelling/configs/...`.
+
+## Experiment Tracking with MLflow
+
+Set `MLFLOW_TRACKING_URI` in your environment (via `.env` / direnv) to control where
+runs are stored:
+
+```bash
+# File-based (no server needed, default if unset)
+export MLFLOW_TRACKING_URI=file:./mlflow-store
+
+# Or point at a local MLflow server
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+```
+
+Use `src/modelling/configs/logger/grugru_vae.yaml` for a fixed experiment name, or
+`src/modelling/configs/logger/mlflow_local.yaml` when something else (e.g. ZenML) overrides the
+experiment name at run time:
+
+```bash
+uv run modelling fit \
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml \
+  --config src/modelling/configs/logger/mlflow_local.yaml \
+  --config src/modelling/configs/callbacks/checkpoint.yaml
+```
+
+When the training-manifest callback is active, training saves top checkpoints,
+writes `training_manifest.json`, and logs the checkpoint directory and manifest
+into the active MLflow run.
+
+### MLflow Utilities
+
+`modelling.src.utils.mlflow_utils` provides standalone helpers (no ZenML needed):
+
+- `get_mlflow_client()` -- configured from `MLFLOW_TRACKING_URI`
+- `download_checkpoint(run_id, artifact_path)` -- pull a checkpoint from an MLflow run
+- `download_artifact(run_id, artifact_path)` -- pull any artifact from an MLflow run
+- `download_config(run_id)` -- pull the logged config YAML
+- `log_checkpoint_artifact(run_id, checkpoint_path)` -- push a `.ckpt` to a run
+- `log_artifact_directory(run_id, local_dir, artifact_path)` -- push a whole artifact subtree
+- `list_experiments()` / `list_runs(experiment_name)` -- browse runs
 
 ## Configuration Structure
 
-Configs are organized by component in `configs/`:
+Configs live under `src/modelling/configs/`:
 
 ### Trainer Config (`trainer/*.yaml`)
+
 - Training hyperparameters (epochs, precision, devices, etc.)
-- Lightning CLI automatically loads matching configs from other directories
 
 ### Model Config (`model/*.yaml`)
+
 - Model class path and initialization arguments
 - Loss manager with multiple losses (each with class path, weight, key mappings)
 - Optimizer configuration (class path and kwargs)
 - Scheduler configuration (optional)
 
 ### Data Config (`data/*.yaml`)
+
 - Dataset loading configuration
 - DataLoader settings (batch size, workers, etc.)
 - Train/validation splits
 
 ### Logger Config (`logger/*.yaml`)
-- Logger configuration (W&B, TensorBoard, etc.)
 
-## Config Composition
+- `grugru_vae.yaml` -- MLflow logger with experiment name `grugru_vae`
+- `mlflow_local.yaml` -- generic MLflow logger used by the pipelines, with run-scoped overrides applied at execution time
 
-Lightning CLI automatically composes configs based on naming conventions. When you specify a trainer config:
+### Callbacks Config (`callbacks/*.yaml`)
 
-```bash
-modelling fit --config configs/trainer/grugru_vae.yaml
-```
+- `checkpoint.yaml` -- ModelCheckpoint with `val/loss` monitoring
 
-It automatically loads matching configs:
-- `configs/model/grugru_vae.yaml` → model configuration
-- `configs/data/grugru_vae.yaml` → data configuration
-- `configs/logger/grugru_vae.yaml` → logger configuration
+## Merging configs
 
-### Overriding Configs
-
-Override specific components by passing multiple config files (later configs override earlier ones):
+Pass multiple `--config` files; **later files override earlier ones** for overlapping
+keys. There is no implicit loading of `model/` or `data/` YAMLs based on the
+trainer filename.
 
 ```bash
-modelling fit \
-  --config configs/trainer/grugru_vae.yaml \
-  --config configs/data/my_custom_data.yaml
+uv run modelling fit \
+  --config src/modelling/configs/trainer/grugru_vae.yaml \
+  --config src/modelling/configs/model/grugru_vae.yaml \
+  --config src/modelling/configs/data/grugru_vae.yaml \
+  --config src/modelling/configs/data/my_custom_data.yaml
 ```
 
 ### Config Structure
 
 Each config file follows Lightning CLI format with top-level keys:
+
 - `trainer:` - Trainer hyperparameters
 - `model:` - Model configuration (class_path, init_args)
 - `data:` - Data module configuration (class_path, init_args)
@@ -88,18 +148,21 @@ src/modelling/
 │   │   ├── loss_manager.py  # Loss computation and management
 │   │   └── utils/          # Utilities (argument mapping, lightning config)
 │   ├── callbacks/           # PyTorch Lightning callbacks
-│   │   └── metrics.py      # MetricsCallback
+│   │   ├── metrics.py      # MetricsCallback
+│   │   └── training_manifest.py # writes deterministic MLflow manifest/artifacts
 │   ├── datamodules/         # Data loading modules
 │   │   └── seq_dm.py       # SequenceDataModule
 │   ├── models/              # Model implementations
 │   │   └── aes/            # Autoencoder models
 │   ├── utils/               # Shared utilities
-│   │   └── importing.py    # Dynamic imports and Hugging Face loading
+│   │   ├── importing.py    # Dynamic imports
+│   │   ├── mlflow_utils.py # MLflow checkpoint/artifact helpers
+│   │   └── export_to_hf.py # HuggingFace Hub export
 │   └── compute_numbers/     # Computation functions
 └── configs/                 # Configuration files
     ├── trainer/            # Training configurations
     ├── model/              # Model configurations
     ├── data/               # Data configurations
-    └── logger/             # Logger configurations
+    ├── logger/             # Logger configurations (MLflow)
+    └── callbacks/          # Callback configurations (checkpoints)
 ```
-

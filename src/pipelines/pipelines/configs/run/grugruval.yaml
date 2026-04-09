@@ -1,0 +1,13 @@
+mlflow:
+  experiment_name: lamp-grugru-vae
+
+zenml:
+  model_name: lamp-grugru-vae
+  model_version: run-20260405
+
+huggingface:
+  repo_id: pszmk/lamp-grugru-vae
+  revision: release/run-20260405
+  tag: run-20260405
+  model_card_title: LAMP GURGRU-VAE
+  private: false

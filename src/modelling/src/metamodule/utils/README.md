@@ -88,7 +88,3 @@ optimizer_dict = configure_optimizers(
 
 **Returns:** Dictionary with `"optimizer"` and optionally `"lr_scheduler"` keys
 
-## metrics.py
-
-Legacy metrics utilities (deprecated). Metrics are now handled via `MetricsCallback` in the callbacks module.
-

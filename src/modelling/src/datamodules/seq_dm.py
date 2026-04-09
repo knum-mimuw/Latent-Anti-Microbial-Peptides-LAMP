@@ -1,8 +1,10 @@
-from typing import Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import Any
+
+from datasets import Dataset, concatenate_datasets, load_dataset
+from pydantic import BaseModel, ConfigDict, Field
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
-from datasets import load_dataset, concatenate_datasets, Dataset
-from pydantic import BaseModel, Field, ConfigDict
 
 from ..utils.importing import get_obj_from_import_path
 
@@ -10,10 +12,8 @@ from ..utils.importing import get_obj_from_import_path
 class DatasetConfig(BaseModel):
     """Configuration for a single dataset."""
 
-    hf_kwargs: Dict[str, Any] = Field(
-        ..., description="Arguments passed to load_dataset()"
-    )
-    shuffle_kwargs: Optional[Dict[str, Any]] = Field(
+    hf_kwargs: dict[str, Any] = Field(..., description="Arguments passed to load_dataset()")
+    shuffle_kwargs: dict[str, Any] | None = Field(
         default=None,
         description="Arguments for .shuffle() (shuffle: bool, buffer_size: int)",
     )
@@ -23,37 +23,35 @@ class CollateConfig(BaseModel):
     """Configuration for a collate function."""
 
     collate_class: str = Field(..., description="Import path to collate class")
-    collate_config_class: str = Field(
-        ..., description="Import path to collate config class"
-    )
-    collate_kwargs: Dict[str, Any] = Field(..., description="Collate config arguments")
+    collate_config_class: str = Field(..., description="Import path to collate config class")
+    collate_kwargs: dict[str, Any] = Field(..., description="Collate config arguments")
 
 
 class SequenceDataModuleConfig(BaseModel):
     """Configuration for the SequenceDataModule."""
 
     # Dict of {name: DatasetConfig}
-    train_datasets: Dict[str, DatasetConfig] = Field(
+    train_datasets: dict[str, DatasetConfig] = Field(
         ..., description="Training datasets: {name: DatasetConfig}"
     )
-    val_datasets: Optional[Dict[str, DatasetConfig]] = None
-    test_datasets: Optional[Dict[str, DatasetConfig]] = None
+    val_datasets: dict[str, DatasetConfig] | None = None
+    test_datasets: dict[str, DatasetConfig] | None = None
 
-    collate: Optional[CollateConfig] = Field(
+    collate: CollateConfig | None = Field(
         None,
         description="Collate function config for tokenization/batching",
     )
 
     # Separate dataloader configs for train/val/test
-    train_dataloader_kwargs: Dict[str, Any] = Field(
+    train_dataloader_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="DataLoader kwargs for training (batch_size, num_workers, etc.)",
     )
-    val_dataloader_kwargs: Dict[str, Any] = Field(
+    val_dataloader_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="DataLoader kwargs for validation (batch_size, num_workers, etc.)",
     )
-    test_dataloader_kwargs: Dict[str, Any] = Field(
+    test_dataloader_kwargs: dict[str, Any] = Field(
         default_factory=dict,
         description="DataLoader kwargs for testing (batch_size, num_workers, etc.)",
     )
@@ -67,10 +65,10 @@ class SequenceDataModule(LightningDataModule):
     def __init__(self, config: SequenceDataModuleConfig):
         super().__init__()
         self.config = config
-        self.train_dataset: Optional[Dataset] = None
-        self.val_datasets: Optional[Dict[str, Dataset]] = None
-        self.test_datasets: Optional[Dict[str, Dataset]] = None
-        self._collate_fn: Optional[Callable] = None
+        self.train_dataset: Dataset | None = None
+        self.val_datasets: dict[str, Dataset] | None = None
+        self.test_datasets: dict[str, Dataset] | None = None
+        self._collate_fn: Callable | None = None
 
     def _load_dataset(self, dataset_config: DatasetConfig) -> Dataset:
         """Load one dataset from Hugging Face."""
@@ -78,9 +76,7 @@ class SequenceDataModule(LightningDataModule):
         if isinstance(ds, dict):
             split = dataset_config.hf_kwargs.get("split")
             if split is None:
-                raise ValueError(
-                    "Dataset has multiple splits but no split specified in config"
-                )
+                raise ValueError("Dataset has multiple splits but no split specified in config")
             ds = ds[split]
 
         # Apply shuffling if shuffle_kwargs provided
@@ -89,12 +85,12 @@ class SequenceDataModule(LightningDataModule):
 
         return ds
 
-    def _merge_datasets(self, datasets_cfg: Dict[str, DatasetConfig]) -> Dataset:
+    def _merge_datasets(self, datasets_cfg: dict[str, DatasetConfig]) -> Dataset:
         """Concatenate multiple HF datasets into one."""
         datasets = [self._load_dataset(cfg) for cfg in datasets_cfg.values()]
         return concatenate_datasets(datasets) if len(datasets) > 1 else datasets[0]
 
-    def _get_collate_fn(self) -> Optional[Callable]:
+    def _get_collate_fn(self) -> Callable | None:
         """Get collate function from config or return None for default."""
         if self._collate_fn is not None:
             return self._collate_fn
@@ -107,21 +103,19 @@ class SequenceDataModule(LightningDataModule):
         self._collate_fn = collate_cls(config_cls(**self.config.collate.collate_kwargs))
         return self._collate_fn
 
-    def setup(self, stage: Optional[str] = None):
+    def setup(self, stage: str | None = None):
         """Load datasets and prepare them for PyTorch."""
         if stage in (None, "fit"):
             self.train_dataset = self._merge_datasets(self.config.train_datasets)
 
             if self.config.val_datasets:
                 self.val_datasets = {
-                    name: self._load_dataset(cfg)
-                    for name, cfg in self.config.val_datasets.items()
+                    name: self._load_dataset(cfg) for name, cfg in self.config.val_datasets.items()
                 }
 
         if stage in (None, "test") and self.config.test_datasets:
             self.test_datasets = {
-                name: self._load_dataset(cfg)
-                for name, cfg in self.config.test_datasets.items()
+                name: self._load_dataset(cfg) for name, cfg in self.config.test_datasets.items()
             }
 
     def train_dataloader(self) -> DataLoader:
@@ -136,7 +130,7 @@ class SequenceDataModule(LightningDataModule):
             **self.config.train_dataloader_kwargs,
         )
 
-    def val_dataloader(self) -> Optional[Dict[str, DataLoader]]:
+    def val_dataloader(self) -> dict[str, DataLoader] | None:
         """Create validation DataLoaders."""
         if self.val_datasets is None:
             return None
@@ -148,13 +142,11 @@ class SequenceDataModule(LightningDataModule):
 
         collate_fn = self._get_collate_fn()
         return {
-            name: DataLoader(
-                dataset, collate_fn=collate_fn, **self.config.val_dataloader_kwargs
-            )
+            name: DataLoader(dataset, collate_fn=collate_fn, **self.config.val_dataloader_kwargs)
             for name, dataset in self.val_datasets.items()
         }
 
-    def test_dataloader(self) -> Optional[Dict[str, DataLoader]]:
+    def test_dataloader(self) -> dict[str, DataLoader] | None:
         """Create test DataLoaders."""
         if self.test_datasets is None:
             return None
@@ -166,8 +158,6 @@ class SequenceDataModule(LightningDataModule):
 
         collate_fn = self._get_collate_fn()
         return {
-            name: DataLoader(
-                dataset, collate_fn=collate_fn, **self.config.test_dataloader_kwargs
-            )
+            name: DataLoader(dataset, collate_fn=collate_fn, **self.config.test_dataloader_kwargs)
             for name, dataset in self.test_datasets.items()
         }
