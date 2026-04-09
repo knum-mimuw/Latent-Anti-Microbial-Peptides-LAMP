@@ -23,31 +23,6 @@ def get_mlflow_client(tracking_uri: str | None = None) -> MlflowClient:
     return MlflowClient(tracking_uri=uri)
 
 
-def download_checkpoint(
-    run_id: str,
-    artifact_path: str = "checkpoints",
-    dest_dir: str | Path = ".mlflow-cache",
-    tracking_uri: str | None = None,
-) -> Path:
-    """Download a checkpoint artifact from an MLflow run.
-
-    Args:
-        run_id: MLflow run ID.
-        artifact_path: Artifact path inside the run (e.g. ``checkpoints/last.ckpt``).
-        dest_dir: Local directory to save artifacts into.
-        tracking_uri: Optional tracking URI override.
-
-    Returns:
-        Path to the downloaded artifact on disk.
-    """
-    return download_artifact(
-        run_id=run_id,
-        artifact_path=artifact_path,
-        dest_dir=dest_dir,
-        tracking_uri=tracking_uri,
-    )
-
-
 def download_artifact(
     run_id: str,
     artifact_path: str,

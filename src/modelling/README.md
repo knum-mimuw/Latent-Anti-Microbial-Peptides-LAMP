@@ -77,8 +77,7 @@ into the active MLflow run.
 `modelling.src.utils.mlflow_utils` provides standalone helpers (no ZenML needed):
 
 - `get_mlflow_client()` -- configured from `MLFLOW_TRACKING_URI`
-- `download_checkpoint(run_id, artifact_path)` -- pull a checkpoint from an MLflow run
-- `download_artifact(run_id, artifact_path)` -- pull any artifact from an MLflow run
+- `download_artifact(run_id, artifact_path)` -- pull any artifact (checkpoint, config, etc.) from an MLflow run
 - `download_config(run_id)` -- pull the logged config YAML
 - `log_checkpoint_artifact(run_id, checkpoint_path)` -- push a `.ckpt` to a run
 - `log_artifact_directory(run_id, local_dir, artifact_path)` -- push a whole artifact subtree

@@ -128,9 +128,9 @@ def _download_manifest_from_mlflow(run_id: str, artifact_path: str) -> dict[str,
 
 def _download_checkpoint_from_mlflow(run_id: str, artifact_path: str) -> Path:
     """Download the target checkpoint from MLflow."""
-    from modelling.src.utils.mlflow_utils import download_checkpoint
+    from modelling.src.utils.mlflow_utils import download_artifact
 
-    checkpoint = download_checkpoint(run_id=run_id, artifact_path=artifact_path)
+    checkpoint = download_artifact(run_id=run_id, artifact_path=artifact_path)
     if not checkpoint.exists():
         raise FileNotFoundError(
             f"MLflow artifact did not produce a checkpoint file: {run_id}/{artifact_path}"
