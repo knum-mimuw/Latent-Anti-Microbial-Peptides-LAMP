@@ -107,11 +107,11 @@ def _build_manifest(
         "checkpoint_artifact_path": checkpoint_artifact_path,
         "best_checkpoint_path": best_checkpoint_path,
         "best_checkpoint_artifact_path": _artifact_path_for_file(
-            checkpoint_artifact_path, best_checkpoint_path
+            checkpoint_artifact_path, best_checkpoint_path, checkpoint_dir
         ),
         "last_checkpoint_path": last_checkpoint_path,
         "last_checkpoint_artifact_path": _artifact_path_for_file(
-            checkpoint_artifact_path, last_checkpoint_path
+            checkpoint_artifact_path, last_checkpoint_path, checkpoint_dir
         ),
         "manifest_artifact_path": _join_artifact_path(manifest_artifact_path, manifest_filename),
         "metrics": _serialize_metrics(trainer.callback_metrics),
@@ -152,11 +152,26 @@ def _normalize_optional_path(path: str | None) -> str | None:
     return str(Path(path).resolve())
 
 
-def _artifact_path_for_file(artifact_root: str, local_path: str | None) -> str | None:
-    """Map a local file path into the configured MLflow artifact namespace."""
+def _artifact_path_for_file(
+    artifact_root: str, local_path: str | None, checkpoint_dir: Path | None = None
+) -> str | None:
+    """Map a local file path into the configured MLflow artifact namespace.
+
+    When *checkpoint_dir* is provided the relative path from that directory is
+    preserved, which is essential for checkpoint filenames that contain
+    sub-directories (e.g. ``epoch=10-step=100-val/loss=0.01.ckpt``).
+    """
     if local_path is None:
         return None
-    return _join_artifact_path(artifact_root, Path(local_path).name)
+    file_path = Path(local_path)
+    if checkpoint_dir is not None:
+        try:
+            relative = file_path.relative_to(checkpoint_dir)
+        except ValueError:
+            relative = Path(file_path.name)
+    else:
+        relative = Path(file_path.name)
+    return _join_artifact_path(artifact_root, str(relative))
 
 
 def _join_artifact_path(prefix: str | None, suffix: str) -> str:
