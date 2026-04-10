@@ -54,6 +54,7 @@ markers = [
 dev = [
   "ruff>=0.5.0",
   "mlflow>=3.10.1",
+  "ipykernel>=7.2.0",
 ]
 
 [tool.uv]
