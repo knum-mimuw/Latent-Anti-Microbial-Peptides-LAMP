@@ -35,3 +35,46 @@ tasks:
           echo "Killing PID $pid (SIGKILL)"
           kill -9 "$pid" 2>/dev/null || true
         done
+
+  clean:run:
+    desc: Remove all local artifacts for a specific MLflow run ID
+    requires:
+      vars: [RUN_ID]
+    cmds:
+      - |
+        removed=0
+        for dir in mlflow-store/*/{{.RUN_ID}}; do
+          if [ -d "$dir" ]; then
+            echo "Removing $dir"
+            rm -rf "$dir"
+            removed=$((removed + 1))
+          fi
+        done
+        for dir in .mlflow-cache/{{.RUN_ID}} checkpoints/{{.RUN_ID}}; do
+          if [ -d "$dir" ]; then
+            echo "Removing $dir"
+            rm -rf "$dir"
+            removed=$((removed + 1))
+          fi
+        done
+        if [ "$removed" -eq 0 ]; then
+          echo "No data found for run {{.RUN_ID}}"
+        else
+          echo "Cleaned $removed directories for run {{.RUN_ID}}"
+        fi
+
+  clean:hf-cache:
+    desc: Remove the local HF hub cache for a model repo
+    vars:
+      REPO_ID: pszmk/lamp-grugru-vae
+    cmds:
+      - |
+        cache_dir="${HF_HUB_CACHE:-${HF_HOME:-$HOME/.cache/huggingface}/hub}"
+        repo_dir="$cache_dir/models--$(echo '{{.REPO_ID}}' | sed 's|/|--|g')"
+        if [ -d "$repo_dir" ]; then
+          echo "Removing $repo_dir"
+          rm -rf "$repo_dir"
+          echo "Cleared HF cache for {{.REPO_ID}}"
+        else
+          echo "No HF cache found for {{.REPO_ID}} at $repo_dir"
+        fi
