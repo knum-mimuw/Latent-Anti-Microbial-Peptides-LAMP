@@ -66,19 +66,25 @@ def publish_hf(
     )
 
     if model_name is not None:
-        log_metadata(
-            metadata={
-                "huggingface": {
-                    "repo_id": result["repo_id"],
-                    "url": result["hub_url"],
-                    "revision": result["revision"],
-                    "tag": result["tag"],
+        try:
+            log_metadata(
+                metadata={
+                    "huggingface": {
+                        "repo_id": result["repo_id"],
+                        "url": result["hub_url"],
+                        "revision": result["revision"],
+                        "tag": result["tag"],
+                    },
+                    "publish": publish_metadata,
                 },
-                "publish": publish_metadata,
-            },
-            model_name=model_name,
-            model_version=model_version,
-        )
+                model_name=model_name,
+                model_version=model_version,
+            )
+        except KeyError:
+            print(
+                f"ZenML model version '{model_version}' for '{model_name}' not found; "
+                "skipping metadata logging."
+            )
 
     return {**result, "mlflow_run_id": source["run_id"], "source_stage": source_stage}
 
