@@ -138,19 +138,26 @@ class GRUVAE(PreTrainedModel):
 
         Args:
             input_ids: Tokenized input sequences [batch_size, seq_len]
+                       Expected format: [BOS, t1, t2, ..., tn, EOS, PAD...]
             **kwargs: Additional batch keys (e.g., attention_mask) - ignored
 
         Returns:
-            Dictionary with logits, mean, and log_std tensors.
+            Dictionary with logits, target, mean, and log_std tensors.
+            logits: [batch, vocab, seq_len-1] — predictions for positions 1..n
+            target: [batch, seq_len-1] — ground truth tokens at positions 1..n
         """
         mean, log_std = self.encoder(input_ids)
         z = _sample_gaussian(mean, torch.exp(log_std))
-        logits = self.decoder(z, input_ids)
 
+        decoder_input = input_ids[:, :-1]
+        target = input_ids[:, 1:]
+
+        logits = self.decoder(z, decoder_input)
         logits = rearrange(logits, "b s v -> b v s")
 
         return {
             "logits": logits,
+            "target": target,
             "mean": mean,
             "log_std": log_std,
         }
