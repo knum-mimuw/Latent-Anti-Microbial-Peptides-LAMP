@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.12"
 
 [options]
-exclude-newer = "2026-04-03T18:29:23.740263776Z"
+exclude-newer = "2026-04-03T19:13:46.582718336Z"
 exclude-newer-span = "P7D"
 
 [manifest]
@@ -1270,38 +1270,22 @@ wheels = [
 name = "lamp"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
-    { name = "bcrypt" },
-    { name = "passlib" },
-    { name = "pymysql" },
-    { name = "pytest" },
-    { name = "sqlalchemy-utils" },
-    { name = "sqlmodel" },
-    { name = "zenml" },
-]
 
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
     { name = "mlflow" },
+    { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "bcrypt", specifier = ">=4.0.1,<5" },
-    { name = "passlib", specifier = ">=1.7.4" },
-    { name = "pymysql", specifier = ">=1.1.2" },
-    { name = "pytest", specifier = ">=8.4.1" },
-    { name = "sqlalchemy-utils", specifier = ">=0.42.1" },
-    { name = "sqlmodel", specifier = ">=0.0.37" },
-    { name = "zenml", extras = ["mlflow", "pytorch-lightning"], specifier = ">=0.94.0" },
-]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "mlflow", specifier = ">=3.10.1" },
+    { name = "pytest", specifier = ">=8.4.1" },
     { name = "ruff", specifier = ">=0.5.0" },
 ]
 
@@ -1344,18 +1328,28 @@ name = "lamp-pipelines"
 version = "0.1.0"
 source = { editable = "src/pipelines" }
 dependencies = [
+    { name = "bcrypt" },
     { name = "lamp-modelling" },
     { name = "mlflow" },
+    { name = "passlib" },
+    { name = "pymysql" },
     { name = "pyyaml" },
+    { name = "sqlalchemy-utils" },
+    { name = "sqlmodel" },
     { name = "zenml" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "bcrypt", specifier = ">=4.0.1,<5" },
     { name = "lamp-modelling", editable = "src/modelling" },
     { name = "mlflow", specifier = ">=3.10.1" },
+    { name = "passlib", specifier = ">=1.7.4" },
+    { name = "pymysql", specifier = ">=1.1.2" },
     { name = "pyyaml", specifier = ">=6.0.0" },
-    { name = "zenml", extras = ["mlflow"], specifier = ">=0.94.0" },
+    { name = "sqlalchemy-utils", specifier = ">=0.42.1" },
+    { name = "sqlmodel", specifier = ">=0.0.37" },
+    { name = "zenml", extras = ["mlflow", "pytorch-lightning"], specifier = ">=0.94.0" },
 ]
 
 [[package]]

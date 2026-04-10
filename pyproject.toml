@@ -4,16 +4,7 @@ version = "0.1.0"
 description = "LAMP workspace with multiple packages for antimicrobial peptide modelling and exploration"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    # passlib (used by ZenML for default-user bootstrap) is incompatible with bcrypt 5.x.
-    "bcrypt>=4.0.1,<5",
-    "passlib>=1.7.4",
-    "pymysql>=1.1.2",
-    "pytest>=8.4.1",
-    "sqlalchemy-utils>=0.42.1",
-    "sqlmodel>=0.0.37",
-    "zenml[mlflow,pytorch-lightning]>=0.94.0",
-]
+dependencies = []
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -55,6 +46,7 @@ dev = [
   "ruff>=0.5.0",
   "mlflow>=3.10.1",
   "ipykernel>=7.2.0",
+  "pytest>=8.4.1",
 ]
 
 [tool.uv]
