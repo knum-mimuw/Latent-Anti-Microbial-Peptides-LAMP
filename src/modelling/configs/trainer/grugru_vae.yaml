@@ -1,5 +1,5 @@
 trainer:
-  max_epochs: 1000
+  max_epochs: 100
   accelerator: auto
   devices: 1
   precision: 16-mixed
