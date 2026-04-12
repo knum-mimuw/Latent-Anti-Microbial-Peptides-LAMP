@@ -9,19 +9,72 @@ tasks:
     cmds:
       - ./scripts/init_zenml_stack.sh
 
-  mlflow-server:
+  cuda:visible-devices:
+    desc: Run one command with CUDA_VISIBLE_DEVICES (DEVICE=int, then -- cmd).
+    summary: |
+      Only the process started after -- sees that GPU; your interactive shell is
+      unchanged when the task exits. Example:
+
+        task cuda:visible-devices DEVICE=0 -- task pipeline:train:grugru-vae
+
+      To set the variable in your current shell, use task cuda:export-device and eval.
+    requires:
+      vars: [DEVICE]
+    cmds:
+      - |
+        set -eu
+        case "{{.DEVICE}}" in
+          ''|*[!0-9]*)
+            echo "DEVICE must be a non-negative integer, got: {{.DEVICE}}" >&2
+            exit 1
+            ;;
+        esac
+        exec env "CUDA_VISIBLE_DEVICES={{.DEVICE}}" {{.CLI_ARGS}}
+
+
+  zenml:list-pipeline-runs:
+    desc: List ZenML pipeline runs (run IDs for cache busting / deletion)
+    cmds:
+      - uv run zenml pipeline runs list
+
+  zenml:clean-pipeline-cache:
+    desc: >-
+      Remove local ZenML files for the active stack (artifact store under
+      zenml-artifacts/, etc.). Helps force steps to re-run. For a full metadata
+      wipe run `uv run zenml clean --yes` then task zenml-init. Delete a single
+      cached run with `uv run zenml pipeline runs delete <RUN_ID>`.
+    cmds:
+      - uv run zenml clean --local --yes
+
+  pipeline:train:grugru-vae:
+    desc: >-
+      ZenML training_pipeline for GRU-VAE (needs zenml-init once). Override RUN_CONFIG
+      for a copy of grugruval.yaml with your MLflow/HF identities.
+    vars:
+      RUN_CONFIG: src/pipelines/pipelines/configs/run/grugruval.yaml
+    cmds:
+      - |
+        uv run python -m pipelines.training \
+          "{{.RUN_CONFIG}}" \
+          src/modelling/configs/trainer/grugru_vae.yaml \
+          src/modelling/configs/model/grugru_vae.yaml \
+          src/modelling/configs/data/grugru_vae.yaml \
+          src/modelling/configs/logger/mlflow_local.yaml \
+          src/modelling/configs/callbacks/checkpoint.yaml
+
+  mlflow:server-start:
     desc: Run MLflow tracking server with SQLite backend (scripts/start_mlflow_server.sh)
     cmds:
       - ./scripts/start_mlflow_server.sh
 
-  mlflow-ui:
+  mlflow:ui-start:
     desc: >-
-      MLflow UI against file:./mlflow-store (no separate server process).
-      For the SQLite-backed server, use task mlflow-server.
+      MLflow UI against the local SQLite store (no separate server process).
+      For the full MLflow server, use task mlflow-server.
     cmds:
-      - uv run mlflow ui --backend-store-uri "${MLFLOW_TRACKING_URI:-file:./mlflow-store}" --host 127.0.0.1 --port {{.MLFLOW_UI_PORT}}
+      - uv run mlflow ui --backend-store-uri "${MLFLOW_TRACKING_URI:-sqlite:///mlflow-store/mlflow.db}" --host 127.0.0.1 --port {{.MLFLOW_UI_PORT}}
 
-  mlflow-ui-stop:
+  mlflow:ui-stop:
     desc: Stop process listening on MLFLOW_UI_PORT (frees the port; same default as mlflow-ui / mlflow-server)
     cmds:
       - |
@@ -36,7 +89,7 @@ tasks:
           kill -9 "$pid" 2>/dev/null || true
         done
 
-  clean:run:
+  mlflow:clean-run:
     desc: Remove all local artifacts for a specific MLflow run ID
     requires:
       vars: [RUN_ID]
@@ -63,7 +116,7 @@ tasks:
           echo "Cleaned $removed directories for run {{.RUN_ID}}"
         fi
 
-  clean:hf-cache:
+  hf:clean-cache:
     desc: Remove the local HF hub cache for a model repo
     vars:
       REPO_ID: pszmk/lamp-grugru-vae
