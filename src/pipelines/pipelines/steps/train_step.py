@@ -23,7 +23,7 @@ class TrainResult(NamedTuple):
     experiment_name: str | None
 
 
-@step
+@step(enable_cache=False)
 def train(config_paths: list[str], run_config_path: str) -> TrainResult:
     """Run Lightning training via CLI and return manifest-derived outputs.
 
