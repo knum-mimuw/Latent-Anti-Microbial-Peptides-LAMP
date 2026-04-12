@@ -2,18 +2,19 @@
 import torch
 import torch.nn as nn
 from einops import rearrange
-from transformers import PreTrainedModel
+from transformers import GenerationMixin, PreTrainedModel
+from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from .config import GRUVAEConfig
 
 
-class GRUEncoder(nn.Module):
-    """GRU-based encoder for VAE."""
+class GRUVAEEncoder(PreTrainedModel):
+    """GRU-based VAE encoder. Independently loadable via ``from_pretrained``."""
+
+    config_class = GRUVAEConfig
 
     def __init__(self, config: GRUVAEConfig):
-        """Initialize encoder with embedding and GRU layers."""
-        super().__init__()
-        self.config = config
+        super().__init__(config)
 
         self.embedding = nn.Embedding(
             num_embeddings=config.vocab_size,
@@ -30,37 +31,48 @@ class GRUEncoder(nn.Module):
             dropout=config.encoder_dropout if config.encoder_num_layers > 1 else 0,
         )
 
-        encoder_output_dim = config.encoder_hidden_size * (2 if config.encoder_bidirectional else 1)
+        encoder_output_dim = config.encoder_hidden_size * (
+            2 if config.encoder_bidirectional else 1
+        )
         self.mean_linear = nn.Linear(encoder_output_dim, config.latent_dim)
         self.log_std_linear = nn.Linear(encoder_output_dim, config.latent_dim)
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Encode input sequence to latent parameters."""
-        embeddings = self.embedding(x)  # [batch_size, seq_len, embedding_dim]
-        output, hidden = self.gru(embeddings)
+        self.post_init()
+
+    def forward(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Encode token sequences to Gaussian parameters.
+
+        Args:
+            input_ids: ``[batch, seq_len]``
+
+        Returns:
+            ``(mean, log_std)`` each ``[batch, latent_dim]``.
+        """
+        embeddings = self.embedding(input_ids)
+        _output, hidden = self.gru(embeddings)
 
         if self.config.encoder_bidirectional:
-            forward_hidden = hidden[-2]  # [batch_size, hidden_dim]
-            backward_hidden = hidden[-1]  # [batch_size, hidden_dim]
-            last_hidden = torch.cat(
-                [forward_hidden, backward_hidden], dim=-1
-            )  # [batch_size, hidden_dim*2]
+            last_hidden = torch.cat([hidden[-2], hidden[-1]], dim=-1)
         else:
-            last_hidden = hidden[-1]  # [batch_size, hidden_dim]
+            last_hidden = hidden[-1]
 
-        mean = self.mean_linear(last_hidden)
-        log_std = self.log_std_linear(last_hidden)
-
-        return mean, log_std
+        return self.mean_linear(last_hidden), self.log_std_linear(last_hidden)
 
 
-class GRUDecoder(nn.Module):
-    """GRU-based decoder for VAE."""
+class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
+    """GRU-based VAE decoder with HuggingFace ``.generate()`` support.
+
+    Independently loadable via ``from_pretrained``.  Generation example::
+
+        dec = GRUVAEDecoder.from_pretrained(...)
+        bos = torch.full((B, 1), bos_id, device=device)
+        out = dec.generate(bos, z=z, max_new_tokens=50, do_sample=True)
+    """
+
+    config_class = GRUVAEConfig
 
     def __init__(self, config: GRUVAEConfig):
-        """Initialize decoder with embedding, GRU, and projection layers."""
-        super().__init__()
-        self.config = config
+        super().__init__(config)
 
         self.embedding = nn.Embedding(
             num_embeddings=config.vocab_size,
@@ -84,76 +96,195 @@ class GRUDecoder(nn.Module):
 
         self.output_proj = nn.Linear(config.decoder_hidden_size, config.vocab_size)
 
-    def forward(self, z: torch.Tensor, input_ids: torch.Tensor) -> torch.Tensor:
-        """Decode latent representation to sequence."""
+        self.post_init()
 
-        h_0_flat = self.latent_proj(z)  # [batch_size, hidden_dim * num_layers]
-        h_0 = rearrange(
+    # ------------------------------------------------------------------
+    # Latent → GRU hidden state
+    # ------------------------------------------------------------------
+
+    def initial_hidden(self, z: torch.Tensor) -> torch.Tensor:
+        """Build GRU initial hidden state from latent ``z``.
+
+        Args:
+            z: ``[batch, latent_dim]``
+
+        Returns:
+            ``[decoder_num_layers, batch, decoder_hidden_size]``
+        """
+        h_0_flat = self.latent_proj(z)
+        return rearrange(
             h_0_flat,
             "b (l h) -> l b h",
             l=self.config.decoder_num_layers,
             h=self.config.decoder_hidden_size,
-        ).contiguous()  # [num_layers, batch_size, hidden_dim]
+        ).contiguous()
 
-        embeddings = self.embedding(input_ids)  # [batch_size, seq_len, embedding_dim]
-        output, _ = self.gru(embeddings, h_0)  # [batch_size, seq_len, hidden_dim]
+    # ------------------------------------------------------------------
+    # One-step decoding (manual autoregressive loops)
+    # ------------------------------------------------------------------
 
-        logits = self.output_proj(output)  # [batch_size, seq_len, vocab_size]
-        return logits
+    def decode_step(
+        self,
+        hidden: torch.Tensor,
+        input_embedding: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Advance the decoder one timestep given a precomputed embedding.
+
+        Args:
+            hidden: ``[decoder_num_layers, batch, decoder_hidden_size]``
+            input_embedding: ``[batch, embedding_dim]`` or ``[batch, 1, embedding_dim]``
+
+        Returns:
+            ``(logits, new_hidden)`` where logits is ``[batch, vocab_size]``.
+        """
+        if input_embedding.dim() == 2:
+            x = input_embedding.unsqueeze(1)
+        elif input_embedding.dim() == 3:
+            if input_embedding.shape[1] != 1:
+                msg = (
+                    "decode_step expects sequence length 1 when input is 3D, "
+                    f"got shape {tuple(input_embedding.shape)}"
+                )
+                raise ValueError(msg)
+            x = input_embedding
+        else:
+            msg = f"input_embedding must be 2D or 3D, got dim {input_embedding.dim()}"
+            raise ValueError(msg)
+
+        output, new_hidden = self.gru(x, hidden)
+        logits = self.output_proj(output[:, -1, :])
+        return logits, new_hidden
+
+    # ------------------------------------------------------------------
+    # HuggingFace forward (generation-compatible)
+    # ------------------------------------------------------------------
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        z: torch.Tensor | None = None,
+        past_key_values: torch.Tensor | None = None,
+        **kwargs,
+    ) -> CausalLMOutputWithPast:
+        """Decode tokens conditioned on latent ``z`` or cached hidden state.
+
+        On the first generation step ``z`` is provided and ``past_key_values``
+        is ``None``; on subsequent steps the GRU hidden state round-trips via
+        ``past_key_values``.
+
+        Args:
+            input_ids: ``[batch, seq_len]``
+            z: ``[batch, latent_dim]`` (first step only).
+            past_key_values: GRU hidden ``[layers, batch, hidden]`` from the
+                previous step.
+
+        Returns:
+            ``CausalLMOutputWithPast`` with ``.logits`` ``[batch, seq_len, vocab_size]``
+            and ``.past_key_values`` (new GRU hidden state).
+        """
+        if past_key_values is not None:
+            hidden = past_key_values
+        else:
+            hidden = self.initial_hidden(z)
+
+        embeddings = self.embedding(input_ids)
+        output, new_hidden = self.gru(embeddings, hidden)
+        logits = self.output_proj(output)
+
+        return CausalLMOutputWithPast(logits=logits, past_key_values=new_hidden)
+
+    # ------------------------------------------------------------------
+    # GenerationMixin hooks
+    # ------------------------------------------------------------------
+
+    def prepare_inputs_for_generation(
+        self,
+        input_ids: torch.LongTensor,
+        past_key_values: torch.Tensor | None = None,
+        z: torch.Tensor | None = None,
+        attention_mask: torch.LongTensor | None = None,
+        cache_position: torch.LongTensor | None = None,
+        **kwargs,
+    ) -> dict:
+        if past_key_values is not None:
+            input_ids = input_ids[:, -1:]
+        return {"input_ids": input_ids, "past_key_values": past_key_values, "z": z}
+
+    @classmethod
+    def _supports_default_dynamic_cache(cls) -> bool:
+        return False
+
+    @staticmethod
+    def _reorder_cache(
+        past_key_values: torch.Tensor, beam_idx: torch.LongTensor
+    ) -> torch.Tensor:
+        """Reindex the GRU hidden state for beam search."""
+        return past_key_values.index_select(1, beam_idx)
+
+
+# ----------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------
 
 
 def _sample_gaussian(mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
-    """Sample from Gaussian distribution."""
     eps = torch.randn_like(mean)
-    z = mean + eps * std
-    return z
+    return mean + eps * std
+
+
+# ----------------------------------------------------------------------
+# Composite VAE (training entry-point)
+# ----------------------------------------------------------------------
 
 
 class GRUVAE(PreTrainedModel):
-    """GRU encoder-decoder VAE with HuggingFace compatibility.
+    """Composite GRU VAE for training.
 
-    This model can be saved/loaded via HuggingFace Hub:
-        model.save_pretrained("./my_model")
-        model.push_to_hub("username/model-name")
-        model = GRUVAE.from_pretrained("username/model-name")
+    Composes :class:`GRUVAEEncoder` and :class:`GRUVAEDecoder`.  The
+    ``forward`` method runs the full encode → sample → decode pipeline and
+    returns the training-oriented dict consumed by ``MetaModule``.
 
-    It also works seamlessly with PyTorch Lightning since PreTrainedModel
-    inherits from nn.Module.
+    For generation, use the decoder directly::
+
+        vae = GRUVAE.from_pretrained(...)
+        mean, log_std = vae.encoder(input_ids)
+        z = ...
+        generated = vae.decoder.generate(bos, z=z, max_new_tokens=50)
     """
 
     config_class = GRUVAEConfig
     base_model_prefix = "gruvae"
 
     def __init__(self, config: GRUVAEConfig):
-        """Initialize VAE with encoder and decoder."""
         super().__init__(config)
-        self.encoder = GRUEncoder(config)
-        self.decoder = GRUDecoder(config)
-
-        # Initialize weights using HuggingFace's mechanism
+        self.encoder = GRUVAEEncoder(config)
+        self.decoder = GRUVAEDecoder(config)
         self.post_init()
 
+    def encode(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Convenience delegate to ``self.encoder(input_ids)``."""
+        return self.encoder(input_ids)
+
     def forward(self, input_ids: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
-        """Forward pass through VAE.
+        """Full VAE training forward.
 
         Args:
-            input_ids: Tokenized input sequences [batch_size, seq_len]
-                       Expected format: [BOS, t1, t2, ..., tn, EOS, PAD...]
-            **kwargs: Additional batch keys (e.g., attention_mask) - ignored
+            input_ids: ``[batch, seq_len]`` with format
+                ``[BOS, t1, ..., tn, EOS, PAD...]``
+            **kwargs: Ignored (e.g. ``attention_mask``).
 
         Returns:
-            Dictionary with logits, target, mean, and log_std tensors.
-            logits: [batch, vocab, seq_len-1] — predictions for positions 1..n
-            target: [batch, seq_len-1] — ground truth tokens at positions 1..n
+            Dict with keys ``logits`` ``[B, V, S-1]``, ``target`` ``[B, S-1]``,
+            ``mean`` ``[B, latent_dim]``, ``log_std`` ``[B, latent_dim]``.
         """
-        mean, log_std = self.encoder(input_ids)
+        mean, log_std = self.encode(input_ids)
         z = _sample_gaussian(mean, torch.exp(log_std))
 
         decoder_input = input_ids[:, :-1]
         target = input_ids[:, 1:]
 
-        logits = self.decoder(z, decoder_input)
-        logits = rearrange(logits, "b s v -> b v s")
+        decoder_out = self.decoder(decoder_input, z=z)
+        logits = rearrange(decoder_out.logits, "b s v -> b v s")
 
         return {
             "logits": logits,
