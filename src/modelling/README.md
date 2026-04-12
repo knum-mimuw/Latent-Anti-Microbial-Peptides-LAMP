@@ -49,7 +49,7 @@ runs are stored:
 
 ```bash
 # File-based (no server needed, default if unset)
-export MLFLOW_TRACKING_URI=file:./mlflow-store
+export MLFLOW_TRACKING_URI=sqlite:///mlflow-store/mlflow.db
 
 # Or point at a local MLflow server
 export MLFLOW_TRACKING_URI=http://127.0.0.1:5000

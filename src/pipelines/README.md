@@ -199,4 +199,4 @@ For a richer MLflow UI experience, start a local server:
 ```
 
 Then set `MLFLOW_TRACKING_URI=http://127.0.0.1:5000` in your `.env`.
-File-based mode (`file:./mlflow-store`) works without any server.
+Local SQLite mode (`sqlite:///mlflow-store/mlflow.db`) works without any server.
