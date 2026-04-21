@@ -1,0 +1,7 @@
+APEX_pathogen_models/
+Full_APEX_pathogen_models/
+__pycache__/
+*.pt
+*.pth
+*.ckpt
+*.bin

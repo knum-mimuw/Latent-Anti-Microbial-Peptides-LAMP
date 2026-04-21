@@ -1,0 +1,23 @@
+[project]
+name = "lamp-apex"
+version = "0.1.0"
+description = "APEX predictor package for antimicrobial peptide scoring"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.3.4",
+    "scipy>=1.16.2",
+    "scikit-learn>=1.7.2",
+    "torch>=2.9.0",
+    "tqdm>=4.67.1",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -58,6 +58,7 @@ required-version = ">=0.9.17"
 # Include the setup package (data preparation tools) as a workspace member
 members = [
   "./setup",
+  "src/apex",
   "src/pep_compass_jr",
   "src/modelling",
   "src/pipelines",
