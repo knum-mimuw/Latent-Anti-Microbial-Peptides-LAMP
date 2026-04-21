@@ -3,13 +3,14 @@ revision = 3
 requires-python = ">=3.12"
 
 [options]
-exclude-newer = "2026-04-14T19:11:16.475275438Z"
+exclude-newer = "2026-04-14T19:11:26.611691155Z"
 exclude-newer-span = "P7D"
 
 [manifest]
 members = [
     "lamp",
     "lamp-apex",
+    "lamp-hydramp",
     "lamp-modelling",
     "lamp-pep-compass-jr",
     "lamp-pipelines",
@@ -1310,6 +1311,17 @@ requires-dist = [
     { name = "torch", specifier = ">=2.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
+
+[[package]]
+name = "lamp-hydramp"
+version = "0.1.0"
+source = { editable = "src/hydramp" }
+dependencies = [
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "torch", specifier = ">=2.9.0" }]
 
 [[package]]
 name = "lamp-modelling"

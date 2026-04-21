@@ -59,6 +59,7 @@ required-version = ">=0.9.17"
 members = [
   "./setup",
   "src/apex",
+  "src/hydramp",
   "src/pep_compass_jr",
   "src/modelling",
   "src/pipelines",
