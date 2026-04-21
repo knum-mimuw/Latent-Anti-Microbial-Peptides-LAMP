@@ -38,7 +38,8 @@ class GRUVAEConfig(PretrainedConfig):
 
         Args:
             vocab_size: Number of tokens in vocabulary (amino acids + special tokens).
-            embedding_dim: Dimension of token embeddings.
+            embedding_dim: Dimension of token embeddings (must be even for the decoder's
+                sinusoidal positional inputs used in training).
             padding_idx: Index used for padding tokens.
             latent_dim: Dimension of the latent space.
             encoder_hidden_size: Hidden size of encoder GRU.

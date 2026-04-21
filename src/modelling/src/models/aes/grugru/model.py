@@ -1,3 +1,4 @@
+import math
 
 import torch
 import torch.nn as nn
@@ -119,6 +120,41 @@ class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
             h=self.config.decoder_hidden_size,
         ).contiguous()
 
+    def forward_latent_positions(
+        self,
+        z: torch.Tensor,
+        num_steps: int,
+    ) -> CausalLMOutputWithPast:
+        """Decode a fixed-length sequence without teacher forcing.
+
+        The GRU is fed sinusoidal positional encodings only; ``z`` initializes
+        the hidden state via :meth:`initial_hidden`. Training via
+        :class:`GRUVAE` uses this path; :meth:`forward` remains for
+        token-conditioned generation (e.g. ``.generate()``).
+
+        Args:
+            z: ``[batch, latent_dim]``
+            num_steps: Number of output positions ``T`` (GRU sequence length).
+
+        Returns:
+            ``CausalLMOutputWithPast`` with ``logits`` ``[batch, T, vocab_size]``.
+        """
+        batch = z.shape[0]
+        hidden = self.initial_hidden(z)
+        if num_steps < 1:
+            logits = z.new_zeros(batch, 0, self.config.vocab_size)
+            return CausalLMOutputWithPast(logits=logits, past_key_values=hidden)
+
+        pe = _sinusoidal_position_encoding(
+            num_steps,
+            self.config.embedding_dim,
+            device=z.device,
+            dtype=z.dtype,
+        ).expand(batch, -1, -1)
+        output, new_hidden = self.gru(pe, hidden)
+        logits = self.output_proj(output)
+        return CausalLMOutputWithPast(logits=logits, past_key_values=new_hidden)
+
     # ------------------------------------------------------------------
     # One-step decoding (manual autoregressive loops)
     # ------------------------------------------------------------------
@@ -227,6 +263,31 @@ class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
 # ----------------------------------------------------------------------
 
 
+def _sinusoidal_position_encoding(
+    length: int,
+    d_model: int,
+    *,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor:
+    """Transformer-style sinusoidal positions ``[1, length, d_model]``.
+
+    ``d_model`` must be even (sin on even indices, cos on odd).
+    """
+    if d_model % 2 != 0:
+        msg = f"sinusoidal PE requires even d_model, got {d_model}"
+        raise ValueError(msg)
+    position = torch.arange(length, device=device, dtype=dtype).unsqueeze(1)
+    div_term = torch.exp(
+        torch.arange(0, d_model, 2, device=device, dtype=dtype)
+        * (-math.log(10000.0) / d_model)
+    )
+    pe = torch.zeros(length, d_model, device=device, dtype=dtype)
+    pe[:, 0::2] = torch.sin(position * div_term)
+    pe[:, 1::2] = torch.cos(position * div_term)
+    return pe.unsqueeze(0)
+
+
 def _sample_gaussian(mean: torch.Tensor, std: torch.Tensor) -> torch.Tensor:
     eps = torch.randn_like(mean)
     return mean + eps * std
@@ -268,6 +329,11 @@ class GRUVAE(PreTrainedModel):
     def forward(self, input_ids: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
         """Full VAE training forward.
 
+        The decoder is unrolled for ``S-1`` steps with **no teacher forcing**:
+        each step's GRU input is a sinusoidal positional encoding; the latent
+        ``z`` initializes the GRU hidden state. Token-conditioned decoding for
+        sampling remains on :meth:`GRUVAEDecoder.forward` / ``.generate()``.
+
         Args:
             input_ids: ``[batch, seq_len]`` with format
                 ``[BOS, t1, ..., tn, EOS, PAD...]``
@@ -280,10 +346,10 @@ class GRUVAE(PreTrainedModel):
         mean, log_std = self.encode(input_ids)
         z = _sample_gaussian(mean, torch.exp(log_std))
 
-        decoder_input = input_ids[:, :-1]
+        num_steps = input_ids.shape[1] - 1
         target = input_ids[:, 1:]
 
-        decoder_out = self.decoder(decoder_input, z=z)
+        decoder_out = self.decoder.forward_latent_positions(z=z, num_steps=num_steps)
         logits = rearrange(decoder_out.logits, "b s v -> b v s")
 
         return {
