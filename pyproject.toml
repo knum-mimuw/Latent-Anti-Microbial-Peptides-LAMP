@@ -60,6 +60,7 @@ members = [
   "./setup",
   "src/apex",
   "src/hydramp",
+  "src/pep_eval",
   "src/pep_compass_jr",
   "src/modelling",
   "src/pipelines",
@@ -67,3 +68,4 @@ members = [
 
 [tool.uv.sources]
 lamp-modelling = { workspace = true }
+pep-eval = { workspace = true }

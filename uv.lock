@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.12"
 
 [options]
-exclude-newer = "2026-04-14T19:11:26.611691155Z"
+exclude-newer = "2026-04-15T17:23:45.911836416Z"
 exclude-newer-span = "P7D"
 
 [manifest]
@@ -15,6 +15,7 @@ members = [
     "lamp-pep-compass-jr",
     "lamp-pipelines",
     "lamp-setup",
+    "pep-eval",
 ]
 
 [[package]]
@@ -1366,6 +1367,7 @@ dependencies = [
     { name = "lamp-modelling" },
     { name = "mlflow" },
     { name = "passlib" },
+    { name = "pep-eval" },
     { name = "pymysql" },
     { name = "pyyaml" },
     { name = "sqlalchemy-utils" },
@@ -1379,6 +1381,7 @@ requires-dist = [
     { name = "lamp-modelling", editable = "src/modelling" },
     { name = "mlflow", specifier = ">=3.10.1" },
     { name = "passlib", specifier = ">=1.7.4" },
+    { name = "pep-eval", editable = "src/pep_eval" },
     { name = "pymysql", specifier = ">=1.1.2" },
     { name = "pyyaml", specifier = ">=6.0.0" },
     { name = "sqlalchemy-utils", specifier = ">=0.42.1" },
@@ -2082,6 +2085,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b6/06/9da9ee59a67fae7761aab3ccc84fa4f3f33f125b370f1ccdb915bf967c11/passlib-1.7.4.tar.gz", hash = "sha256:defd50f72b65c5402ab2c573830a6978e5f202ad0d984793c8dde2c4152ebe04", size = 689844, upload-time = "2020-10-08T19:00:52.121Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3b/a4/ab6b7589382ca3df236e03faa71deac88cae040af60c071a78d254a62172/passlib-1.7.4-py2.py3-none-any.whl", hash = "sha256:aa6bca462b8d8bda89c70b382f0c298a20b5560af6cbfa2dce410c0a2fb669f1", size = 525554, upload-time = "2020-10-08T19:00:49.856Z" },
+]
+
+[[package]]
+name = "pep-eval"
+version = "0.1.0"
+source = { editable = "src/pep_eval" }
+dependencies = [
+    { name = "datasets" },
+    { name = "mlflow" },
+    { name = "numpy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "datasets", specifier = ">=2.14.0" },
+    { name = "mlflow", specifier = ">=3.10.1" },
+    { name = "numpy", specifier = ">=2.0.0" },
 ]
 
 [[package]]
