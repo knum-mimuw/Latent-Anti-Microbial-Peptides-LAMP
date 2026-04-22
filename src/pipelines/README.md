@@ -25,7 +25,7 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
 3. Create a per-run config file:
 
    ```bash
-   cp src/pipelines/pipelines/configs/run/grugruval.yaml /tmp/lamp-run.yaml
+   cp src/pipelines/pipelines/configs/run/training/grugruval.yaml /tmp/lamp-run.yaml
    ```
 
 ## Usage
@@ -113,6 +113,27 @@ uv run python -m pipelines.train_and_publish \
 
 Leave `--upload-to-hf` off to keep this as a pure train-and-log run.
 
+### Evaluate AMP Dataset From Hugging Face
+
+Run the evaluation pipeline to compute all competition categories and log to
+MLflow only (this workflow does not write local result files):
+
+```bash
+uv run python -m pipelines.evaluation \
+  src/pipelines/pipelines/configs/run/evaluation/amp_eval.yaml
+```
+
+Or with Taskfile:
+
+```bash
+task pipeline:evaluate:amp RUN_CONFIG=src/pipelines/pipelines/configs/run/evaluation/amp_eval.yaml
+```
+
+The run config controls dataset source/name/split/revision, column mappings,
+and experiment name. Each run is tagged with `hf_dataset_name` and
+`hf_dataset_split`, and the run name includes the dataset identifier to support
+MLflow ranking/filtering by category metrics.
+
 ### Re-Upload After Fine-Tuning
 
 The recommended flow is one stable HF repo per model family, with each new model
@@ -174,20 +195,38 @@ model = AutoModel.from_pretrained(
 
 ## Architecture
 
-The pipelines package contains **thin wrappers** that call into the modelling
-package's public API or CLI. The modelling package has **zero ZenML imports**.
+The pipelines package contains **thin wrappers** that call into standalone
+packages. Training calls `lamp-modelling`; evaluation calls `pep-eval`.
 
 ```
 src/pipelines/                    # workspace member (depends on zenml + lamp-modelling)
 ├── pyproject.toml
 └── pipelines/                    # import package ``pipelines``
-    ├── training.py             # @pipeline: training_pipeline
-    ├── publish_hf.py           # @pipeline: publish_hf_pipeline
-    ├── train_and_publish.py    # @pipeline: train_and_optional_publish_pipeline
-    ├── configs/run/grugruval.yaml
-    └── steps/
-        ├── train_step.py       # @step: runs training and reads the manifest
-        └── publish_hf_step.py  # @step: exports MLflow artifacts to HF
+    ├── publish_hf.py           # compatibility shim
+    ├── train_and_publish.py    # compatibility shim
+    ├── training/               # training domain
+    │   ├── __main__.py         # python -m pipelines.training
+    │   ├── pipeline.py         # @pipeline: training_pipeline
+    │   ├── publish.py          # @pipeline: publish_hf_pipeline
+    │   ├── train_and_publish.py# @pipeline: train_and_optional_publish_pipeline
+    │   └── steps/
+    ├── evaluation/             # evaluation domain
+    │   ├── __main__.py         # python -m pipelines.evaluation
+    │   ├── pipeline.py         # @pipeline: evaluation_pipeline
+    │   └── steps/
+    └── configs/run/
+        ├── training/grugruval.yaml
+        └── evaluation/amp_eval.yaml
+
+src/pep_eval/                    # standalone AMP evaluation package
+├── pyproject.toml
+└── src/pep_eval/
+    ├── api.py
+    ├── io.py
+    ├── metrics.py
+    ├── parsing.py
+    ├── panels.py
+    └── logging.py
 ```
 
 ## Optional: MLflow Server

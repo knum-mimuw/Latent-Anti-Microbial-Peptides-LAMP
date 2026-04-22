@@ -5,6 +5,7 @@ description = "ZenML pipeline orchestration for LAMP training workflows"
 requires-python = ">=3.12"
 dependencies = [
     "lamp-modelling",
+    "pep-eval",
     # passlib (used by ZenML for default-user bootstrap) is incompatible with bcrypt 5.x.
     "bcrypt>=4.0.1,<5",
     "passlib>=1.7.4",
@@ -19,3 +20,10 @@ dependencies = [
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pipelines*"]

@@ -51,7 +51,7 @@ tasks:
       ZenML training_pipeline for GRU-VAE (needs zenml-init once). Override RUN_CONFIG
       for a copy of grugruval.yaml with your MLflow/HF identities.
     vars:
-      RUN_CONFIG: src/pipelines/pipelines/configs/run/grugruval.yaml
+      RUN_CONFIG: src/pipelines/pipelines/configs/run/training/grugruval.yaml
     cmds:
       - |
         uv run python -m pipelines.training \
@@ -61,6 +61,16 @@ tasks:
           src/modelling/configs/data/grugru_vae.yaml \
           src/modelling/configs/logger/mlflow_local.yaml \
           src/modelling/configs/callbacks/checkpoint.yaml
+
+  pipeline:evaluate:amp:
+    desc: >-
+      ZenML evaluation pipeline for AMP challenge metrics. Requires a dataset-specific
+      RUN_CONFIG.
+    requires:
+      vars: [RUN_CONFIG]
+    cmds:
+      - |
+        uv run python -m pipelines.evaluation "{{.RUN_CONFIG}}"
 
   mlflow:server-start:
     desc: Run MLflow tracking server with SQLite backend (scripts/start_mlflow_server.sh)
