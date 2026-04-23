@@ -11,27 +11,27 @@ export HF_TOKEN=hf_xxx
 
 **Create dataset repository:**
 ```bash
-uv run -m setup.prepare_data create_huggingface_dataset_repo --config setup/prepare_data/configs/create_huggingface_dataset_repo_config.yaml
+uv run -m setup.prepare_data create_huggingface_dataset_repo --config setup/prepare_data/configs/repository/create_huggingface_dataset_repo_config.yaml
 ```
 
 **Prepare and upload ESM2 UniRef data:**
 ```bash
-uv run -m setup.prepare_data prepare_and_upload_esm2_uniref --config setup/prepare_data/configs/prepare_and_upload_esm2_uniref_config.yaml
+uv run -m setup.prepare_data prepare_and_upload_esm2_uniref --config setup/prepare_data/configs/esm2_uniref/prepare_and_upload_esm2_uniref_config.yaml
 ```
 
 **Prepare and upload APEX predictions sidecar data:**
 ```bash
-uv run -m setup.prepare_data prepare_and_upload_apex_predictions --config setup/prepare_data/configs/prepare_and_upload_apex_predictions_config.yaml
+uv run -m setup.prepare_data prepare_and_upload_apex_predictions --config setup/prepare_data/configs/apex_predictions/prepare_and_upload_apex_predictions_config.yaml
 ```
 
 **Prepare and upload strain condition sidecar data:**
 ```bash
-uv run -m setup.prepare_data prepare_and_upload_strain_conditions --config setup/prepare_data/configs/prepare_and_upload_strain_conditions_config.yaml
+uv run -m setup.prepare_data prepare_and_upload_strain_conditions --config setup/prepare_data/configs/strain_conditions/prepare_and_upload_strain_conditions_config.yaml
 ```
 
 **Prepare and upload physicochemical properties sidecar data:**
 ```bash
-uv run -m setup.prepare_data prepare_and_upload_physicochemical_properties --config setup/prepare_data/configs/prepare_and_upload_physicochemical_properties_config.yaml
+uv run -m setup.prepare_data prepare_and_upload_physicochemical_properties --config setup/prepare_data/configs/physicochemical_properties/prepare_and_upload_physicochemical_properties_config.yaml
 ```
 
 ### Dataset Structure

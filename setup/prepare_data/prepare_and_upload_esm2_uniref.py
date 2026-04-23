@@ -52,6 +52,10 @@ class PrepareESM2UniRefConfig(BaseModel):
     max_sequences: int | None = Field(
         None, description="Optional cap on number of yielded sequences"
     )
+    allowed_amino_acids: str | None = Field(
+        None,
+        description="Optional allowed amino-acid alphabet used for sequence filtering.",
+    )
     splits: list[str] = Field(
         default_factory=lambda: ["train", "validation"],
         description="List of dataset splits to process (e.g., train, validation)",
@@ -71,25 +75,36 @@ def create_sequence_item(item: dict[str, Any]) -> SequenceItem:
     }
 
 
+def _has_only_allowed_amino_acids(sequence: str, allowed_amino_acids: frozenset[str]) -> bool:
+    return set(sequence.upper()).issubset(allowed_amino_acids)
+
+
 def _stream_split(
     *,
     dataset_name: str,
     split: str,
     max_length: int,
     max_sequences: int | None,
+    allowed_amino_acids: frozenset[str] | None,
 ) -> Generator[SequenceItem, None, None]:
-    """Stream one split and yield standardized items with length filter."""
+    """Stream one split and yield items filtered by length and amino-acid alphabet."""
     dataset = load_dataset(dataset_name, split=split, streaming=True)
     count = 0
     for item in tqdm(dataset, desc=f"Processing {split} sequences"):
         sequence = item.get("sequence")
         if not sequence:
             continue
-        if len(sequence) <= max_length:
-            yield create_sequence_item(item)
-            count += 1
-            if max_sequences and count >= max_sequences:
-                break
+        if len(sequence) > max_length:
+            continue
+        if allowed_amino_acids is not None and not _has_only_allowed_amino_acids(
+            sequence, allowed_amino_acids
+        ):
+            continue
+
+        yield create_sequence_item(item)
+        count += 1
+        if max_sequences and count >= max_sequences:
+            break
 
 
 def prepare_esm2_short_sequences_for_splits(
@@ -114,11 +129,19 @@ def prepare_esm2_short_sequences(
 
     Returns a generator of standardized items.
     """
+    allowed_amino_acids: frozenset[str] | None = None
+    if cfg.allowed_amino_acids is not None:
+        normalized = cfg.allowed_amino_acids.strip().upper()
+        if not normalized:
+            raise ValueError("allowed_amino_acids must not be empty when provided.")
+        allowed_amino_acids = frozenset(normalized)
+
     return _stream_split(
         dataset_name=cfg.dataset_name,
         split=cfg.split,
         max_length=cfg.max_length,
         max_sequences=cfg.max_sequences,
+        allowed_amino_acids=allowed_amino_acids,
     )
 
 
@@ -151,7 +174,9 @@ def prepare_and_upload_esm2_uniref_command(
 
     typer.echo(
         "🚀 Preparing ESM2 UniRef sequences "
-        f"(<= {prepare_cfg.max_length} AA) for splits {prepare_cfg.splits}"
+        f"(<= {prepare_cfg.max_length} AA, "
+        f"AA filter={'on' if prepare_cfg.allowed_amino_acids else 'off'}) "
+        f"for splits {prepare_cfg.splits}"
     )
     # Build streaming generators per split (no full materialization)
     streams = prepare_esm2_short_sequences_for_splits(prepare_cfg)
