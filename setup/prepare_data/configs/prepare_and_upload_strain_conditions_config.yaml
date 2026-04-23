@@ -1,0 +1,26 @@
+# Configuration for mean-based strain condition sidecar generation + upload
+
+prepare:
+  dataset_name: your-org/your-peptide-dataset
+  dataset_config: apex_predictions
+  split: train
+  peptide_id_column: peptide_id
+  strain_columns:
+    - A. baumannii ATCC 19606
+    - E. coli ATCC 11775
+    - E. coli AIG221
+    - E. coli AIG222
+  strain_groups:
+    gram_negative:
+      - A. baumannii ATCC 19606
+      - E. coli ATCC 11775
+      - E. coli AIG221
+      - E. coli AIG222
+  batch_size: 50000
+
+upload:
+  repo_id: your-org/your-peptide-dataset
+  subset_name: strain_conditions
+  split: train
+  commit_message: "Add mean-based strain condition sidecar features"
+  token: null # Uses HF_TOKEN when null

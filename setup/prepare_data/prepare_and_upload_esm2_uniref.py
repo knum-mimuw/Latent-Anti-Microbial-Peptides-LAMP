@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
-from datasets import load_dataset
+from datasets import Features, Value, load_dataset
 from pydantic import BaseModel, Extra, Field
 from tqdm import tqdm
 
@@ -13,6 +13,30 @@ from .upload_data_to_huggingface import (
     upload_streams_to_huggingface_subset,
 )
 from .utils import SequenceItem, load_config_file
+
+CONFIG_FILE_OPTION = typer.Option(
+    ...,
+    "--config",
+    "-c",
+    help=(
+        "YAML/JSON config with separate 'prepare' and 'upload' sections. "
+        "Prepare section: dataset_name, splits, max_length, max_sequences. "
+        "Upload section: repo_id, commit_message, columns, token"
+    ),
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+)
+
+ESM2_UPLOAD_FEATURES = Features(
+    {
+        "ur50_id": Value("string"),
+        "ur90_id": Value("string"),
+        "sequence": Value("string"),
+        "length": Value("int32"),
+    }
+)
 
 
 class PrepareESM2UniRefConfig(BaseModel):
@@ -100,20 +124,7 @@ def prepare_esm2_short_sequences(
 
 def prepare_and_upload_esm2_uniref_command(
     *,
-    config_file: Path = typer.Option(
-        ...,
-        "--config",
-        "-c",
-        help=(
-            "YAML/JSON config with separate 'prepare' and 'upload' sections. "
-            "Prepare section: dataset_name, splits, max_length, max_sequences. "
-            "Upload section: repo_id, commit_message, columns, token"
-        ),
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        readable=True,
-    ),
+    config_file: Path = CONFIG_FILE_OPTION,
 ) -> None:
     """Prepare <=N AA sequences for configured splits and upload to HF as DatasetDict."""
     # Load required config (fail fast if missing or invalid)
@@ -139,7 +150,8 @@ def prepare_and_upload_esm2_uniref_command(
     upload_cfg = UploadConfig(**upload_raw)
 
     typer.echo(
-        f"🚀 Preparing ESM2 UniRef sequences (<= {prepare_cfg.max_length} AA) for splits {prepare_cfg.splits}"
+        "🚀 Preparing ESM2 UniRef sequences "
+        f"(<= {prepare_cfg.max_length} AA) for splits {prepare_cfg.splits}"
     )
     # Build streaming generators per split (no full materialization)
     streams = prepare_esm2_short_sequences_for_splits(prepare_cfg)
@@ -153,6 +165,7 @@ def prepare_and_upload_esm2_uniref_command(
         columns=upload_cfg.columns,
         commit_message=upload_cfg.commit_message,
         token=upload_cfg.token,
+        features=ESM2_UPLOAD_FEATURES,
     )
     typer.echo(
         f"📦 Uploaded subset to https://huggingface.co/datasets/{upload_cfg.repo_id}/{upload_cfg.subset_name}"

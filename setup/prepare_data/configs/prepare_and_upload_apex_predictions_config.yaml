@@ -1,0 +1,19 @@
+# Configuration for batched APEX prediction + upload as sidecar subset
+
+prepare:
+  dataset_name: pszmk/LAMP-datasets
+  dataset_config: sequences
+  split: train
+  peptide_id_column: peptide_id
+  sequence_column: sequence
+  device: cpu
+  batch_size: 2048
+  chunk_size: 20000
+  path_mode: apex_pathogen # or apex_full_pathogen
+  use_tqdm: false
+
+upload:
+  repo_id: pszmk/LAMP-datasets
+  subset_name: apex_predictions
+  split: train
+  commit_message: "Add APEX pathogen MIC sidecar predictions"

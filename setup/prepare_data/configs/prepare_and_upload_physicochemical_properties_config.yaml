@@ -1,0 +1,28 @@
+# Configuration for physicochemical feature sidecar generation + upload
+
+prepare:
+  dataset_name: pszmk/LAMP-datasets
+  dataset_config: sequences
+  split: train
+  peptide_id_column: peptide_id
+  sequence_column: sequence
+  batch_size: 50000
+  use_tqdm: false
+  ph: 7.0
+  hydrophobicity_scale: Aboderin
+  properties:
+    - charge
+    - hydrophobicity
+    - isoelectric_point
+    - molecular_weight
+    - instability_index
+    - gravy
+    - aliphatic_index
+    - boman_index
+
+upload:
+  repo_id: pszmk/LAMP-datasets
+  subset_name: physicochemical_properties
+  split: train
+  commit_message: "Add physicochemical properties sidecar features"
+  token: null # Uses HF_TOKEN when null

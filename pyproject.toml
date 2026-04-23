@@ -69,3 +69,4 @@ members = [
 [tool.uv.sources]
 lamp-modelling = { workspace = true }
 pep-eval = { workspace = true }
+lamp-apex = { workspace = true }
