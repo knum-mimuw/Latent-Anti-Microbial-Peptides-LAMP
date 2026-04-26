@@ -18,12 +18,14 @@ data:
         train:
           hf_kwargs:
             path: "pszmk/LAMP-datasets"
+            name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
             split: "train"
 
       val_datasets:
         val:
           hf_kwargs:
             path: "pszmk/LAMP-datasets"
+            name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
             split: "validation"
 
       train_dataloader_kwargs:
