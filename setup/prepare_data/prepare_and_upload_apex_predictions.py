@@ -27,7 +27,10 @@ class PrepareApexPredictionsConfig(BaseModel):
 
     dataset_name: str = Field(..., description="HF dataset repository ID with peptide sequences.")
     dataset_config: str | None = Field(None, description="Optional HF config name.")
-    split: str = Field("train", description="Dataset split to process.")
+    split: str | None = Field(
+        None,
+        description="Dataset split to process. If null, all source splits are processed.",
+    )
     peptide_id_column: str = Field("peptide_id", description="Column used as merge key.")
     sequence_column: str = Field("sequence", description="Peptide sequence column.")
     device: str = Field("cpu", description="Torch device string, e.g. cpu/cuda.")
@@ -48,7 +51,6 @@ class ApexUploadConfig(BaseModel):
 
     repo_id: str = Field(..., description="Target HF dataset repository ID.")
     subset_name: str = Field(..., description="Target subset/config name.")
-    split: str = Field("train", description="Output split name.")
     commit_message: str = Field(..., description="HF commit message.")
     token: str | None = Field(None, description="HF token. Uses HF_TOKEN when unset.")
 
@@ -56,10 +58,10 @@ class ApexUploadConfig(BaseModel):
         extra = Extra.allow
 
 
-def _apex_upload_features(pathogen_columns: list[str]) -> Features:
+def _apex_upload_features(id_column_name: str, pathogen_columns: list[str]) -> Features:
     return Features(
         {
-            "peptide_id": Value("string"),
+            id_column_name: Value("string"),
             **{column_name: Value("float64") for column_name in pathogen_columns},
         }
     )
@@ -88,8 +90,10 @@ def _iter_dataset_chunks(dataset: Any, chunk_size: int):
         yield [{column: chunk[column][idx] for column in keys} for idx in range(row_count)]
 
 
-def _build_prediction_rows(
+def _build_prediction_rows_for_split(
     cfg: PrepareApexPredictionsConfig,
+    *,
+    split_name: str,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     try:
         from apex import PredictorAPEX
@@ -102,7 +106,7 @@ def _build_prediction_rows(
     if cfg.batch_size <= 0 or cfg.chunk_size <= 0:
         raise ValueError("batch_size and chunk_size must be positive integers.")
 
-    dataset = load_dataset(cfg.dataset_name, name=cfg.dataset_config, split=cfg.split)
+    dataset = load_dataset(cfg.dataset_name, name=cfg.dataset_config, split=split_name)
     for required in (cfg.peptide_id_column, cfg.sequence_column):
         if required not in dataset.column_names:
             raise ValueError(f"Input dataset missing required column '{required}'.")
@@ -133,7 +137,7 @@ def _build_prediction_rows(
             raise ValueError("Prediction row count mismatch.")
 
         for row_idx, key in enumerate(key_batch):
-            row: dict[str, Any] = {"peptide_id": key}
+            row: dict[str, Any] = {cfg.peptide_id_column: key}
             for col_idx, column_name in enumerate(pathogen_columns):
                 value = predictions[row_idx][col_idx]
                 if not isinstance(value, Real):
@@ -166,16 +170,45 @@ def prepare_and_upload_apex_predictions_command(
         upload_raw["token"] = os.getenv("HF_TOKEN")
     upload_cfg = ApexUploadConfig(**upload_raw)
 
+    dataset_obj = load_dataset(prepare_cfg.dataset_name, name=prepare_cfg.dataset_config)
+    if prepare_cfg.split is not None:
+        if prepare_cfg.split not in dataset_obj:
+            raise ValueError(
+                f"Requested split '{prepare_cfg.split}' not found in source dataset."
+            )
+        split_names = [prepare_cfg.split]
+    else:
+        split_names = list(dataset_obj.keys())
+    if not split_names:
+        raise ValueError("No source dataset splits found.")
+
     typer.echo(
         f"🚀 Running APEX predictions for {prepare_cfg.dataset_name}"
-        f" ({prepare_cfg.dataset_config or 'default-config'}/{prepare_cfg.split})"
+        f" ({prepare_cfg.dataset_config or 'default-config'}) across splits: {split_names}"
     )
-    rows, pathogen_columns = _build_prediction_rows(prepare_cfg)
-    expected_columns = ["peptide_id", *pathogen_columns]
-    _validate_output_columns(rows, expected_columns)
-    features = _apex_upload_features(pathogen_columns)
-    columns = {"peptide_id": "peptide_id", **{col: col for col in pathogen_columns}}
-    streams = {upload_cfg.split: rows}
+
+    streams: dict[str, list[dict[str, Any]]] = {}
+    pathogen_columns: list[str] | None = None
+    for split_name in split_names:
+        rows, split_pathogen_columns = _build_prediction_rows_for_split(
+            prepare_cfg,
+            split_name=split_name,
+        )
+        if pathogen_columns is None:
+            pathogen_columns = split_pathogen_columns
+        elif split_pathogen_columns != pathogen_columns:
+            raise ValueError("Pathogen output columns changed across splits.")
+        expected_columns = [prepare_cfg.peptide_id_column, *split_pathogen_columns]
+        _validate_output_columns(rows, expected_columns)
+        streams[split_name] = rows
+
+    if pathogen_columns is None:
+        raise ValueError("No pathogen columns produced.")
+    features = _apex_upload_features(prepare_cfg.peptide_id_column, pathogen_columns)
+    columns = {
+        prepare_cfg.peptide_id_column: prepare_cfg.peptide_id_column,
+        **{col: col for col in pathogen_columns},
+    }
     upload_streams_to_huggingface_subset(
         streams=streams,
         repo_id=upload_cfg.repo_id,

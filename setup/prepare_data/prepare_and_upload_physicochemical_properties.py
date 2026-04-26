@@ -39,7 +39,10 @@ class PreparePhysicochemicalConfig(BaseModel):
 
     dataset_name: str = Field(..., description="HF dataset repository ID with peptide sequences.")
     dataset_config: str | None = Field(None, description="Optional HF config name.")
-    split: str = Field("train", description="Input split to process.")
+    split: str | None = Field(
+        None,
+        description="Input split to process. If null, all source splits are processed.",
+    )
     peptide_id_column: str = Field("peptide_id", description="Primary key column.")
     sequence_column: str = Field("sequence", description="Peptide sequence column.")
     batch_size: int = Field(50000, description="Chunk size for processing.")
@@ -63,7 +66,6 @@ class PhysicochemicalUploadConfig(BaseModel):
 
     repo_id: str = Field(..., description="Target HF dataset repository ID.")
     subset_name: str = Field(..., description="Target subset/config name.")
-    split: str = Field("train", description="Output split name.")
     commit_message: str = Field(..., description="HF commit message.")
     token: str | None = Field(None, description="HF token. Uses HF_TOKEN when unset.")
 
@@ -71,10 +73,10 @@ class PhysicochemicalUploadConfig(BaseModel):
         extra = Extra.allow
 
 
-def _physicochemical_upload_features(feature_columns: list[str]) -> Features:
+def _physicochemical_upload_features(id_column_name: str, feature_columns: list[str]) -> Features:
     return Features(
         {
-            "peptide_id": Value("string"),
+            id_column_name: Value("string"),
             **{column_name: Value("float64") for column_name in feature_columns},
         }
     )
@@ -95,8 +97,10 @@ def _iter_dataset_chunks(dataset: Any, chunk_size: int):
         yield [{column: chunk[column][idx] for column in keys} for idx in range(row_count)]
 
 
-def _build_physicochemical_rows(
+def _build_physicochemical_rows_for_split(
     cfg: PreparePhysicochemicalConfig,
+    *,
+    split_name: str,
 ) -> tuple[list[dict[str, Any]], list[str]]:
     if cfg.batch_size <= 0:
         raise ValueError("batch_size must be a positive integer.")
@@ -106,7 +110,7 @@ def _build_physicochemical_rows(
     if unknown:
         raise ValueError(f"Unsupported properties requested: {unknown}")
 
-    dataset = load_dataset(cfg.dataset_name, name=cfg.dataset_config, split=cfg.split)
+    dataset = load_dataset(cfg.dataset_name, name=cfg.dataset_config, split=split_name)
     for required in (cfg.peptide_id_column, cfg.sequence_column):
         if required not in dataset.column_names:
             raise ValueError(f"Input dataset missing required column '{required}'.")
@@ -123,7 +127,7 @@ def _build_physicochemical_rows(
             if not isinstance(sequence, str) or not sequence.strip():
                 raise ValueError(f"Found invalid sequence for key '{key}'.")
 
-            row: dict[str, Any] = {"peptide_id": key}
+            row: dict[str, Any] = {cfg.peptide_id_column: key}
             row.update(
                 compute_properties(
                     sequence,
@@ -157,16 +161,44 @@ def prepare_and_upload_physicochemical_properties_command(
         upload_raw["token"] = os.getenv("HF_TOKEN")
     upload_cfg = PhysicochemicalUploadConfig(**upload_raw)
 
+    dataset_obj = load_dataset(prepare_cfg.dataset_name, name=prepare_cfg.dataset_config)
+    if prepare_cfg.split is not None:
+        if prepare_cfg.split not in dataset_obj:
+            raise ValueError(
+                f"Requested split '{prepare_cfg.split}' not found in source dataset."
+            )
+        split_names = [prepare_cfg.split]
+    else:
+        split_names = list(dataset_obj.keys())
+    if not split_names:
+        raise ValueError("No source dataset splits found.")
+
     typer.echo(
         f"🚀 Building physicochemical sidecar for {prepare_cfg.dataset_name}"
-        f" ({prepare_cfg.dataset_config or 'default-config'}/{prepare_cfg.split})"
+        f" ({prepare_cfg.dataset_config or 'default-config'}) across splits: {split_names}"
     )
-    rows, feature_columns = _build_physicochemical_rows(prepare_cfg)
-    expected_columns = ["peptide_id", *feature_columns]
-    _validate_output_columns(rows, expected_columns)
-    features = _physicochemical_upload_features(feature_columns)
-    columns = {"peptide_id": "peptide_id", **{col: col for col in feature_columns}}
-    streams = {upload_cfg.split: rows}
+    streams: dict[str, list[dict[str, Any]]] = {}
+    feature_columns: list[str] | None = None
+    for split_name in split_names:
+        rows, split_feature_columns = _build_physicochemical_rows_for_split(
+            prepare_cfg,
+            split_name=split_name,
+        )
+        if feature_columns is None:
+            feature_columns = split_feature_columns
+        elif split_feature_columns != feature_columns:
+            raise ValueError("Physicochemical output columns changed across splits.")
+        expected_columns = [prepare_cfg.peptide_id_column, *split_feature_columns]
+        _validate_output_columns(rows, expected_columns)
+        streams[split_name] = rows
+
+    if feature_columns is None:
+        raise ValueError("No physicochemical columns produced.")
+    features = _physicochemical_upload_features(prepare_cfg.peptide_id_column, feature_columns)
+    columns = {
+        prepare_cfg.peptide_id_column: prepare_cfg.peptide_id_column,
+        **{col: col for col in feature_columns},
+    }
     upload_streams_to_huggingface_subset(
         streams=streams,
         repo_id=upload_cfg.repo_id,

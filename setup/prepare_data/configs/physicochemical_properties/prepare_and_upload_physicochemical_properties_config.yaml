@@ -3,7 +3,7 @@
 prepare:
   dataset_name: pszmk/LAMP-datasets
   dataset_config: nvidia_esm2_uniref_pretraining_data_leq50aa
-  split: train
+  split: null # all splits
   peptide_id_column: ur90_id
   sequence_column: sequence
   batch_size: 50000
@@ -23,6 +23,5 @@ prepare:
 upload:
   repo_id: pszmk/LAMP-datasets
   subset_name: physicochemical_properties
-  split: train
   commit_message: "Add physicochemical properties sidecar features"
   token: null # Uses HF_TOKEN when null
