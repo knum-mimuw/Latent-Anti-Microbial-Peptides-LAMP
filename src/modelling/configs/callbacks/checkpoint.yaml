@@ -3,9 +3,10 @@ trainer:
     - class_path: pytorch_lightning.callbacks.ModelCheckpoint
       init_args:
         dirpath: checkpoints
-        filename: "{epoch}-{step}-{val/loss:.4f}"
+        filename: "epoch={epoch}-step={step}-val_loss={val/loss:.4f}"
         monitor: val/loss
         mode: min
+        auto_insert_metric_name: false
         save_top_k: 1
         save_last: true
     - class_path: modelling.src.callbacks.training_manifest.TrainingManifestCallback
