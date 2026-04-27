@@ -15,7 +15,7 @@ tasks:
       Only the process started after -- sees that GPU; your interactive shell is
       unchanged when the task exits. Example:
 
-        task cuda:visible-devices DEVICE=0 -- task pipeline:train:grugru-vae
+        task cuda:visible-devices DEVICE=0 -- task pipeline:train
 
       To set the variable in your current shell, use task cuda:export-device and eval.
     requires:
@@ -46,21 +46,27 @@ tasks:
     cmds:
       - uv run zenml clean --local --yes
 
-  pipeline:train:grugru-vae:
+  pipeline:train:
     desc: >-
-      ZenML training_pipeline for GRU-VAE (needs zenml-init once). Override RUN_CONFIG
-      for a copy of grugruval.yaml with your MLflow/HF identities.
+      ZenML training_pipeline (needs zenml-init once). Defaults target GRU-VAE.
+      Override RUN_CONFIG for MLflow/HF identities; TRAINER, MODEL, DATA, LOGGER,
+      CALLBACKS for other stacks (e.g. MODEL=src/modelling/configs/model/grugru_vae_kl01.yaml).
     vars:
       RUN_CONFIG: src/pipelines/pipelines/configs/run/training/grugruval.yaml
+      TRAINER: src/modelling/configs/trainer/grugru_vae.yaml
+      MODEL: src/modelling/configs/model/grugru_vae.yaml
+      DATA: src/modelling/configs/data/grugru_vae.yaml
+      LOGGER: src/modelling/configs/logger/mlflow_local.yaml
+      CALLBACKS: src/modelling/configs/callbacks/checkpoint.yaml
     cmds:
       - |
         uv run python -m pipelines.training \
           "{{.RUN_CONFIG}}" \
-          src/modelling/configs/trainer/grugru_vae.yaml \
-          src/modelling/configs/model/grugru_vae.yaml \
-          src/modelling/configs/data/grugru_vae.yaml \
-          src/modelling/configs/logger/mlflow_local.yaml \
-          src/modelling/configs/callbacks/checkpoint.yaml
+          "{{.TRAINER}}" \
+          "{{.MODEL}}" \
+          "{{.DATA}}" \
+          "{{.LOGGER}}" \
+          "{{.CALLBACKS}}"
 
   pipeline:evaluate:amp:
     desc: >-
