@@ -49,3 +49,4 @@ def apply() -> None:
 
     Client._get_entity_by_id_or_name_or_prefix = _patched  # type: ignore[method-assign]
     _applied = True
+

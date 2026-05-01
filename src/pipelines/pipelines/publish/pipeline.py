@@ -6,7 +6,7 @@ import argparse
 
 from zenml import pipeline
 
-from .._pipeline_utils import (
+from ..utils.pipeline_utils import (
     configured_model_target,
     load_run_config,
     resolve_model_card_title,
@@ -118,3 +118,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from .._zenml_sqlalchemy_uuid_compat import apply as _apply_zenml_uuid_compat
+from ..utils.zenml_sqlalchemy_uuid_compat import apply as _apply_zenml_uuid_compat
 
 _apply_zenml_uuid_compat()
 

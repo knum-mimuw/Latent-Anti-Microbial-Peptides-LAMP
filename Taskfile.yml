@@ -52,7 +52,7 @@ tasks:
       Override RUN_CONFIG for MLflow/HF identities; TRAINER, MODEL, DATA, LOGGER,
       CALLBACKS for other stacks (e.g. MODEL=src/modelling/configs/model/grugru_vae_kl01.yaml).
     vars:
-      RUN_CONFIG: src/pipelines/pipelines/configs/run/training/grugruval.yaml
+      RUN_CONFIG: src/pipelines/pipelines/configs/run/training/grugru_vae_training_run.yaml
       TRAINER: src/modelling/configs/trainer/grugru_vae.yaml
       MODEL: src/modelling/configs/model/grugru_vae.yaml
       DATA: src/modelling/configs/data/grugru_vae.yaml

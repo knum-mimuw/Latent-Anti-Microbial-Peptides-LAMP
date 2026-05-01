@@ -25,7 +25,7 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
 3. Create a per-run config file:
 
    ```bash
-   cp src/pipelines/pipelines/configs/run/training/grugruval.yaml /tmp/lamp-run.yaml
+   cp src/pipelines/pipelines/configs/run/training/grugru_vae_training_run.yaml /tmp/lamp-run.yaml
    ```
 
 ## Usage
@@ -71,7 +71,7 @@ Use the standalone publish pipeline when you want to release a checkpoint from a
 known MLflow run and artifact path:
 
 ```bash
-uv run python -m pipelines.publish_hf \
+uv run python -m pipelines.publish \
   /tmp/lamp-run.yaml \
   --run-id 8dcb3c4c7d4a4f54a58fd52ef0a5ef12 \
   --artifact-path checkpoints/epoch=30-step=1200-val/loss=0.1234.ckpt \
@@ -82,7 +82,7 @@ Or publish from a local training manifest that already contains those explicit
 coordinates:
 
 ```bash
-uv run python -m pipelines.publish_hf \
+uv run python -m pipelines.publish \
   /tmp/lamp-run.yaml \
   --manifest-path /tmp/training_manifest.json \
   --tag run-20260405
@@ -100,7 +100,7 @@ Use the composed pipeline when you want training to automatically publish the
 best checkpoint after it finishes:
 
 ```bash
-uv run python -m pipelines.train_and_publish \
+uv run python -m pipelines.training.train_and_publish \
   --run-config /tmp/lamp-run.yaml \
   src/modelling/configs/trainer/grugru_vae.yaml \
   src/modelling/configs/model/grugru_vae.yaml \
@@ -140,7 +140,7 @@ The recommended flow is one stable HF repo per model family, with each new model
 state uploaded as a new revision or tag:
 
 ```bash
-uv run python -m pipelines.publish_hf \
+uv run python -m pipelines.publish \
   /tmp/lamp-run.yaml \
   --run-id c138b2d5e34c4d2da4ed1ebc4c02ab77 \
   --artifact-path checkpoints/finetuned-01.ckpt \
@@ -202,20 +202,21 @@ packages. Training calls `lamp-modelling`; evaluation calls `pep-eval`.
 src/pipelines/                    # workspace member (depends on zenml + lamp-modelling)
 ├── pyproject.toml
 └── pipelines/                    # import package ``pipelines``
-    ├── publish_hf.py           # compatibility shim
-    ├── train_and_publish.py    # compatibility shim
+    ├── publish/                # publish domain
+    │   ├── __main__.py         # python -m pipelines.publish
+    │   ├── pipeline.py         # @pipeline: publish_hf_pipeline
+    │   └── steps/
     ├── training/               # training domain
     │   ├── __main__.py         # python -m pipelines.training
     │   ├── pipeline.py         # @pipeline: training_pipeline
-    │   ├── publish.py          # @pipeline: publish_hf_pipeline
-    │   ├── train_and_publish.py# @pipeline: train_and_optional_publish_pipeline
+    │   ├── train_and_publish.py# python -m pipelines.training.train_and_publish
     │   └── steps/
     ├── evaluation/             # evaluation domain
     │   ├── __main__.py         # python -m pipelines.evaluation
     │   ├── pipeline.py         # @pipeline: evaluation_pipeline
     │   └── steps/
     └── configs/run/
-        ├── training/grugruval.yaml
+        ├── training/grugru_vae_training_run.yaml
         └── evaluation/amp_eval.yaml
 
 src/pep_eval/                    # standalone AMP evaluation package

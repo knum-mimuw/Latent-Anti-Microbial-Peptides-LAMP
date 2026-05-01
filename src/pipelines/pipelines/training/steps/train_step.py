@@ -10,7 +10,7 @@ from typing import NamedTuple
 import yaml
 from zenml import step
 
-from ..._pipeline_utils import lamp_repo_root, load_run_config
+from ...utils.pipeline_utils import lamp_repo_root, load_run_config
 
 
 class TrainResult(NamedTuple):

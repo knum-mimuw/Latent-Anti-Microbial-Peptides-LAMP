@@ -125,3 +125,4 @@ def _optional_str(value: object) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+

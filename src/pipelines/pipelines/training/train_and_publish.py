@@ -6,7 +6,7 @@ import argparse
 
 from zenml import pipeline
 
-from .._pipeline_utils import (
+from ..utils.pipeline_utils import (
     configured_model_target,
     load_run_config,
     resolve_model_card_title,
@@ -15,7 +15,7 @@ from .._pipeline_utils import (
     resolve_revision,
     resolve_tag,
 )
-from .steps.publish_hf_step import publish_hf
+from ..publish.steps.publish_hf_step import publish_hf
 from .steps.train_step import train
 
 
