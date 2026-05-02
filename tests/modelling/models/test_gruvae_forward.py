@@ -28,16 +28,15 @@ def test_gruvae_forward_shapes() -> None:
     out = model(input_ids)
 
     v = cfg.vocab_size
-    assert out["logits"].shape == (b, v, s - 1)
-    assert out["target"].shape == (b, s - 1)
-    assert out["mean"].shape == (b, cfg.latent_dim)
-    assert out["log_std"].shape == (b, cfg.latent_dim)
+    assert out.logits.shape == (b, v, s - 1)
+    assert out.target.shape == (b, s - 1)
+    assert out.mean.shape == (b, cfg.latent_dim)
+    assert out.log_std.shape == (b, cfg.latent_dim)
+    assert out["logits"] is out.logits
 
 
 def test_decoder_forward_latent_positions_is_token_free() -> None:
-    """Training decode path feeds PE only; for fixed ``z`` and length, logits
-    do not depend on any token sequence (only on ``z`` and step index).
-    """
+    """For fixed ``z`` and length, logits are deterministic (no token sequence)."""
     model, cfg = _tiny_gruvae()
 
     z = torch.randn(2, cfg.latent_dim)
@@ -46,6 +45,18 @@ def test_decoder_forward_latent_positions_is_token_free() -> None:
         once = model.decoder.forward_latent_positions(z, num_steps=num_steps).logits
         twice = model.decoder.forward_latent_positions(z, num_steps=num_steps).logits
     assert torch.allclose(once, twice)
+
+
+def test_decoder_forward_latent_positions_depends_on_z() -> None:
+    """Latent is fused at each step; different ``z`` must change logits."""
+    model, cfg = _tiny_gruvae()
+    num_steps = 7
+    z1 = torch.randn(2, cfg.latent_dim)
+    z2 = z1 + 1.0
+    with torch.no_grad():
+        logits1 = model.decoder.forward_latent_positions(z1, num_steps=num_steps).logits
+        logits2 = model.decoder.forward_latent_positions(z2, num_steps=num_steps).logits
+    assert not torch.allclose(logits1, logits2)
 
 
 def test_decoder_generate_runs_with_latent() -> None:

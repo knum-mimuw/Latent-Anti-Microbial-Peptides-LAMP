@@ -1,12 +1,27 @@
 import math
+from dataclasses import dataclass
 
 import torch
 import torch.nn as nn
 from einops import rearrange
 from transformers import GenerationMixin, PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
+from transformers.utils import ModelOutput
 
 from .config import GRUVAEConfig
+
+
+@dataclass
+class GRUVAEOutput(ModelOutput):
+    """Training forward outputs from :class:`GRUVAE`.
+
+    ``logits`` are ``[batch, vocab_size, seq_len - 1]`` (channels-first for loss).
+    """
+
+    logits: torch.Tensor | None = None
+    target: torch.Tensor | None = None
+    mean: torch.Tensor | None = None
+    log_std: torch.Tensor | None = None
 
 
 class GRUVAEEncoder(PreTrainedModel):
@@ -59,6 +74,10 @@ class GRUVAEEncoder(PreTrainedModel):
 
         return self.mean_linear(last_hidden), self.log_std_linear(last_hidden)
 
+    def encode(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Alias for :meth:`forward`; use on the encoder submodule, not the composite VAE."""
+        return self.forward(input_ids)
+
 
 class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
     """GRU-based VAE decoder with HuggingFace ``.generate()`` support.
@@ -95,6 +114,12 @@ class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
             dropout=config.decoder_dropout if config.decoder_num_layers > 1 else 0,
         )
 
+        # Fuses sinusoidal PE with broadcast ``z`` at each step (latent-informed decode).
+        self.pe_latent_merge = nn.Linear(
+            config.embedding_dim + config.latent_dim,
+            config.embedding_dim,
+        )
+
         self.output_proj = nn.Linear(config.decoder_hidden_size, config.vocab_size)
 
         self.post_init()
@@ -127,10 +152,12 @@ class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
     ) -> CausalLMOutputWithPast:
         """Decode a fixed-length sequence without teacher forcing.
 
-        The GRU is fed sinusoidal positional encodings only; ``z`` initializes
-        the hidden state via :meth:`initial_hidden`. Training via
-        :class:`GRUVAE` uses this path; :meth:`forward` remains for
-        token-conditioned generation (e.g. ``.generate()``).
+        At each step the GRU sees a projection of ``[PE_t || z]``: sinusoidal
+        position ``t`` concatenated with ``z`` (broadcast along time), merged to
+        ``embedding_dim`` via :attr:`pe_latent_merge`. ``z`` also initializes
+        hidden state via :meth:`initial_hidden`. Training via :class:`GRUVAE`
+        uses this path; :meth:`forward` remains for token-conditioned generation
+        (e.g. ``.generate()``).
 
         Args:
             z: ``[batch, latent_dim]``
@@ -151,7 +178,9 @@ class GRUVAEDecoder(PreTrainedModel, GenerationMixin):
             device=z.device,
             dtype=z.dtype,
         ).expand(batch, -1, -1)
-        output, new_hidden = self.gru(pe, hidden)
+        z_rep = z.unsqueeze(1).expand(batch, num_steps, self.config.latent_dim)
+        gru_in = self.pe_latent_merge(torch.cat([pe, z_rep], dim=-1))
+        output, new_hidden = self.gru(gru_in, hidden)
         logits = self.output_proj(output)
         return CausalLMOutputWithPast(logits=logits, past_key_values=new_hidden)
 
@@ -303,12 +332,12 @@ class GRUVAE(PreTrainedModel):
 
     Composes :class:`GRUVAEEncoder` and :class:`GRUVAEDecoder`.  The
     ``forward`` method runs the full encode → sample → decode pipeline and
-    returns the training-oriented dict consumed by ``MetaModule``.
+    returns :class:`GRUVAEOutput` (mapping-compatible for ``MetaModule`` / losses).
 
     For generation, use the decoder directly::
 
         vae = GRUVAE.from_pretrained(...)
-        mean, log_std = vae.encoder(input_ids)
+        mean, log_std = vae.encoder.encode(input_ids)
         z = ...
         generated = vae.decoder.generate(bos, z=z, max_new_tokens=50)
     """
@@ -322,17 +351,14 @@ class GRUVAE(PreTrainedModel):
         self.decoder = GRUVAEDecoder(config)
         self.post_init()
 
-    def encode(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        """Convenience delegate to ``self.encoder(input_ids)``."""
-        return self.encoder(input_ids)
-
-    def forward(self, input_ids: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor, **kwargs) -> GRUVAEOutput:
         """Full VAE training forward.
 
         The decoder is unrolled for ``S-1`` steps with **no teacher forcing**:
-        each step's GRU input is a sinusoidal positional encoding; the latent
-        ``z`` initializes the GRU hidden state. Token-conditioned decoding for
-        sampling remains on :meth:`GRUVAEDecoder.forward` / ``.generate()``.
+        each step's GRU input fuses sinusoidal position with ``z`` (see
+        :meth:`GRUVAEDecoder.forward_latent_positions`); ``z`` also initializes
+        the GRU hidden state. Token-conditioned decoding for sampling remains on
+        :meth:`GRUVAEDecoder.forward` / ``.generate()``.
 
         Args:
             input_ids: ``[batch, seq_len]`` with format
@@ -340,10 +366,10 @@ class GRUVAE(PreTrainedModel):
             **kwargs: Ignored (e.g. ``attention_mask``).
 
         Returns:
-            Dict with keys ``logits`` ``[B, V, S-1]``, ``target`` ``[B, S-1]``,
-            ``mean`` ``[B, latent_dim]``, ``log_std`` ``[B, latent_dim]``.
+            :class:`GRUVAEOutput` with ``logits`` ``[B, V, S-1]``, ``target``
+            ``[B, S-1]``, ``mean`` ``[B, latent_dim]``, ``log_std`` ``[B, latent_dim]``.
         """
-        mean, log_std = self.encode(input_ids)
+        mean, log_std = self.encoder.encode(input_ids)
         z = _sample_gaussian(mean, torch.exp(log_std))
 
         num_steps = input_ids.shape[1] - 1
@@ -352,9 +378,4 @@ class GRUVAE(PreTrainedModel):
         decoder_out = self.decoder.forward_latent_positions(z=z, num_steps=num_steps)
         logits = rearrange(decoder_out.logits, "b s v -> b v s")
 
-        return {
-            "logits": logits,
-            "target": target,
-            "mean": mean,
-            "log_std": log_std,
-        }
+        return GRUVAEOutput(logits=logits, target=target, mean=mean, log_std=log_std)
