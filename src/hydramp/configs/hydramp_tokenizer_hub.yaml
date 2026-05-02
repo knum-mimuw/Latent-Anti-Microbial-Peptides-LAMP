@@ -1,0 +1,7 @@
+# Upload HydrAMP AA tokenizer to the Hub branch `main`.
+# Requires HF_TOKEN or `hf auth login` with write access to `repo_id`.
+
+artifact: tokenizer
+repo_id: pszmk/hydramp-aa-tokenizer
+revision: main
+private: false

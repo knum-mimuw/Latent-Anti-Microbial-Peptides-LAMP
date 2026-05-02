@@ -3,14 +3,14 @@ revision = 3
 requires-python = ">=3.12"
 
 [options]
-exclude-newer = "2026-04-16T17:39:03.448029923Z"
+exclude-newer = "2026-04-25T17:36:32.708955792Z"
 exclude-newer-span = "P7D"
 
 [manifest]
 members = [
+    "hydramp",
     "lamp",
     "lamp-apex",
-    "lamp-hydramp",
     "lamp-modelling",
     "lamp-pep-compass-jr",
     "lamp-pipelines",
@@ -1021,6 +1021,25 @@ wheels = [
 ]
 
 [[package]]
+name = "hydramp"
+version = "0.1.0"
+source = { editable = "src/hydramp" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "pyyaml" },
+    { name = "torch" },
+    { name = "transformers" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "huggingface-hub", specifier = ">=0.32.0" },
+    { name = "pyyaml", specifier = ">=6.0.2" },
+    { name = "torch", specifier = ">=2.9.0" },
+    { name = "transformers", specifier = ">=4.52.0" },
+]
+
+[[package]]
 name = "idna"
 version = "3.10"
 source = { registry = "https://pypi.org/simple" }
@@ -1343,17 +1362,6 @@ requires-dist = [
     { name = "torch", specifier = ">=2.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
 ]
-
-[[package]]
-name = "lamp-hydramp"
-version = "0.1.0"
-source = { editable = "src/hydramp" }
-dependencies = [
-    { name = "torch" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "torch", specifier = ">=2.9.0" }]
 
 [[package]]
 name = "lamp-modelling"
