@@ -1,4 +1,4 @@
-"""Loss computation functions for use with LossManager."""
+"""Numeric helpers shared by models (e.g. VAE KL terms)."""
 
 import torch
 

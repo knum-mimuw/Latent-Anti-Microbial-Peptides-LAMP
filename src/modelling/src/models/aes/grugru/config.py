@@ -32,6 +32,10 @@ class GRUVAEConfig(PretrainedConfig):
         decoder_hidden_size: int = 128,
         decoder_num_layers: int = 2,
         decoder_dropout: float = 0.1,
+        # Training loss (used by Hugging Face Trainer; inference leaves ``labels`` unset)
+        kl_beta: float = 1e-3,
+        ignore_index: int = 0,
+        label_smoothing: float = 0.0,
         **kwargs,
     ):
         """Initialize GRU VAE configuration.
@@ -49,6 +53,9 @@ class GRUVAEConfig(PretrainedConfig):
             decoder_hidden_size: Hidden size of decoder GRU.
             decoder_num_layers: Number of layers in decoder GRU.
             decoder_dropout: Dropout rate for decoder GRU.
+            kl_beta: Weight on KL(q(z|x) || N(0,I)) in the training loss.
+            ignore_index: Passed to cross-entropy for padded / masked positions.
+            label_smoothing: Cross-entropy label smoothing (0 disables).
             **kwargs: Additional arguments passed to PretrainedConfig.
         """
         super().__init__(**kwargs)
@@ -71,3 +78,7 @@ class GRUVAEConfig(PretrainedConfig):
         self.decoder_hidden_size = decoder_hidden_size
         self.decoder_num_layers = decoder_num_layers
         self.decoder_dropout = decoder_dropout
+
+        self.kl_beta = kl_beta
+        self.ignore_index = ignore_index
+        self.label_smoothing = label_smoothing

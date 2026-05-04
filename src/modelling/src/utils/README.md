@@ -59,8 +59,5 @@ model = load_model_from_huggingface(
 
 ## Usage
 
-These utilities are used throughout the codebase for:
-- Dynamic model loading in `MetaModule`
-- Dynamic loss/metric loading in `LossManager` and `MetricsCallback`
-- Hugging Face model integration in model implementations
+These utilities are used throughout the codebase for dynamic imports and Hugging Face Hub export.
 

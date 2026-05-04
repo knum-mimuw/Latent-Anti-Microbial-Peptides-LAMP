@@ -1,4 +1,4 @@
-"""Export Lightning checkpoints to Hugging Face Hub."""
+"""Export Hugging Face Trainer checkpoints (model folders) to the Hub."""
 
 from __future__ import annotations
 
@@ -12,9 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, TypedDict
 
-import torch
-
-from .importing import get_obj_from_import_path
+from transformers import AutoModel
 
 
 class HfExportResult(TypedDict):
@@ -41,13 +39,14 @@ def export_to_huggingface(
     model_card_title: str | None = None,
     metadata: Mapping[str, Any] | None = None,
 ) -> HfExportResult:
-    """Export a Lightning checkpoint to Hugging Face Hub.
+    """Export a Trainer checkpoint directory (``save_pretrained`` layout) to the Hub.
 
     Args:
-        checkpoint_path: Path to the Lightning checkpoint file.
+        checkpoint_path: Directory containing ``config.json`` and model weights
+            (e.g. ``model.safetensors``), typically a Hugging Face Trainer checkpoint folder.
         repo_id: Hugging Face repo ID (e.g. ``username/model-name``).
         revision: Optional branch or revision target for the upload.
-        tag: Optional immutable tag to create after upload.
+        tag: Optional immutable tag to create after the upload.
         private: Whether the repo should be created as private if missing.
         commit_message: Optional Hub commit message.
         token: Optional Hub token. When omitted, Hub environment variables apply.
@@ -57,17 +56,13 @@ def export_to_huggingface(
     from huggingface_hub import HfApi, create_branch, create_tag
     from huggingface_hub.errors import HfHubHTTPError
 
-    checkpoint = _load_checkpoint(checkpoint_path)
-    checkpoint_path = Path(checkpoint_path).resolve()
+    weights_dir = Path(checkpoint_path).resolve()
+    loaded = _load_model_from_trainer_dir(weights_dir)
     metadata_dict = dict(metadata or {})
 
-    print(f"Loading checkpoint: {checkpoint_path}")
-    print(f"Model: {checkpoint['model_class_path']}")
-    print(f"Config: {checkpoint['config_class_path']}")
-
-    print("Creating model and loading weights...")
-    model = checkpoint["model_class"](checkpoint["config"])
-    model.load_state_dict(checkpoint["weights"])
+    print(f"Loading weights from: {weights_dir}")
+    print(f"Model: {loaded['model_class_path']}")
+    print(f"Config: {loaded['config_class_path']}")
 
     api = HfApi(token=token)
     api.create_repo(
@@ -77,7 +72,7 @@ def export_to_huggingface(
         exist_ok=True,
     )
 
-    commit_message = commit_message or f"Upload model from {checkpoint_path.name}"
+    commit_message = commit_message or f"Upload model from {weights_dir.name}"
     upload_revision = revision or "main"
     if upload_revision != "main":
         create_branch(
@@ -93,24 +88,24 @@ def export_to_huggingface(
 
     with tempfile.TemporaryDirectory(prefix="lamp-hf-export-") as temp_dir:
         export_dir = Path(temp_dir)
-        model.save_pretrained(export_dir)
+        loaded["model"].save_pretrained(export_dir)
         _inject_auto_map(
             export_dir=export_dir,
-            config_class=checkpoint["config_class"],
-            model_class=checkpoint["model_class"],
+            config_class=loaded["config_class"],
+            model_class=loaded["model_class"],
         )
         _write_remote_code_files(
             export_dir=export_dir,
-            model_class=checkpoint["model_class"],
-            config_class=checkpoint["config_class"],
+            model_class=loaded["model_class"],
+            config_class=loaded["config_class"],
         )
         _write_metadata_artifacts(
             export_dir=export_dir,
             repo_id=repo_id,
             revision=upload_revision,
-            checkpoint_path=checkpoint_path,
-            model_class_path=checkpoint["model_class_path"],
-            config_class_path=checkpoint["config_class_path"],
+            source_path=weights_dir,
+            model_class_path=loaded["model_class_path"],
+            config_class_path=loaded["config_class_path"],
             model_card_title=resolved_title,
             metadata=metadata_dict,
         )
@@ -154,12 +149,38 @@ def export_to_huggingface(
         "hub_url": f"https://huggingface.co/{repo_id}",
         "revision": upload_revision,
         "tag": tag,
-        "checkpoint_path": str(checkpoint_path),
-        "model_class_path": checkpoint["model_class_path"],
-        "config_class_path": checkpoint["config_class_path"],
+        "checkpoint_path": str(weights_dir),
+        "model_class_path": loaded["model_class_path"],
+        "config_class_path": loaded["config_class_path"],
     }
     print(f"Done! Model available at: {result['hub_url']}")
     return result
+
+
+def _qual(obj: type[Any]) -> str:
+    return f"{obj.__module__}.{obj.__qualname__}"
+
+
+def _load_model_from_trainer_dir(weights_dir: Path) -> dict[str, Any]:
+    if not weights_dir.is_dir():
+        raise FileNotFoundError(f"Expected a directory with model files, got {weights_dir}")
+    if not (weights_dir / "config.json").is_file():
+        raise FileNotFoundError(f"Missing config.json under {weights_dir}")
+
+    model = AutoModel.from_pretrained(
+        str(weights_dir),
+        trust_remote_code=True,
+        local_files_only=True,
+    )
+    cfg_cls = model.config.__class__
+    model_cls = model.__class__
+    return {
+        "model": model,
+        "model_class": model_cls,
+        "config_class": cfg_cls,
+        "model_class_path": _qual(model_cls),
+        "config_class_path": _qual(cfg_cls),
+    }
 
 
 def _inject_auto_map(
@@ -225,31 +246,6 @@ def _upload_main_readme(
     )
 
 
-def _load_checkpoint(checkpoint_path: str | Path) -> dict[str, Any]:
-    """Load the Lightning checkpoint and reconstruct model metadata."""
-    checkpoint_path = Path(checkpoint_path)
-    ckpt = torch.load(checkpoint_path, map_location="cpu")
-
-    hp = ckpt["hyper_parameters"]["config"]
-    model_class_path = hp["model"]["model_class_path"]
-    config_class_path = hp["model"]["config_class_path"]
-    config_dict = hp["model"]["config"]
-
-    model_class = get_obj_from_import_path(model_class_path)
-    config_class = get_obj_from_import_path(config_class_path)
-    config = config_class(**config_dict)
-    weights = {k[6:]: v for k, v in ckpt["state_dict"].items() if k.startswith("model.")}
-
-    return {
-        "model_class": model_class,
-        "config_class": config_class,
-        "model_class_path": model_class_path,
-        "config_class_path": config_class_path,
-        "config": config,
-        "weights": weights,
-    }
-
-
 def _write_remote_code_files(
     export_dir: Path,
     model_class: type[Any],
@@ -281,7 +277,7 @@ def _write_metadata_artifacts(
     export_dir: Path,
     repo_id: str,
     revision: str,
-    checkpoint_path: Path,
+    source_path: Path,
     model_class_path: str,
     config_class_path: str,
     model_card_title: str,
@@ -289,7 +285,7 @@ def _write_metadata_artifacts(
 ) -> None:
     """Write model card, loading example, and structured metadata."""
     payload = {
-        "checkpoint_path": str(checkpoint_path),
+        "weights_dir": str(source_path),
         "model_class_path": model_class_path,
         "config_class_path": config_class_path,
         "revision": revision,
@@ -332,7 +328,7 @@ def _write_metadata_artifacts(
             "",
             "## Overview",
             "",
-            f"This model was exported from the Lightning checkpoint `{checkpoint_path.name}`.",
+            f"This model was exported from the Trainer checkpoint directory `{source_path.name}`.",
             "",
             "## Loading",
             "",
@@ -356,7 +352,7 @@ def _write_metadata_artifacts(
             "",
             "## Provenance",
             "",
-            f"- Source checkpoint: `{checkpoint_path}`",
+            f"- Source weights dir: `{source_path}`",
             f"- Model class: `{model_class_path}`",
             f"- Config class: `{config_class_path}`",
             f"- Suggested revision: `{loading_revision}`",
@@ -380,13 +376,20 @@ def _get_source_path(obj: type[Any]) -> Path:
 
 
 def main() -> None:
-    """CLI entry point for exporting a checkpoint to Hugging Face Hub."""
-    parser = argparse.ArgumentParser(description="Export Lightning checkpoint to Hugging Face Hub")
-    parser.add_argument(
+    """CLI entry point for exporting Trainer weights to Hugging Face Hub."""
+    parser = argparse.ArgumentParser(
+        description="Export a Hugging Face Trainer checkpoint folder to the Hub",
+    )
+    src = parser.add_mutually_exclusive_group(required=True)
+    src.add_argument(
+        "--weights-dir",
+        type=str,
+        help="Directory with config.json + model weights from Trainer.save_pretrained",
+    )
+    src.add_argument(
         "--checkpoint",
         type=str,
-        required=True,
-        help="Path to the Lightning checkpoint file",
+        help="Deprecated alias for --weights-dir (directory path, not a .ckpt file).",
     )
     parser.add_argument(
         "--repo-id",
@@ -437,12 +440,13 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    metadata: dict[str, Any] | None = None
+    weights_dir = args.weights_dir or args.checkpoint
+    metadata_dict: dict[str, Any] | None = None
     if args.metadata_json:
-        metadata = json.loads(Path(args.metadata_json).read_text())
+        metadata_dict = json.loads(Path(args.metadata_json).read_text())
 
     export_to_huggingface(
-        checkpoint_path=args.checkpoint,
+        checkpoint_path=weights_dir,
         repo_id=args.repo_id,
         revision=args.revision,
         tag=args.tag,
@@ -450,7 +454,7 @@ def main() -> None:
         commit_message=args.commit_message,
         token=args.token,
         model_card_title=args.model_card_title,
-        metadata=metadata,
+        metadata=metadata_dict,
     )
 
 

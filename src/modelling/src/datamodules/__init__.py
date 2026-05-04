@@ -1,21 +1,11 @@
-"""Data modules for sequence datasets."""
+"""Dataset helpers (collators); training datasets are built in ``modelling.src.training.data``."""
 
 from .collate import (
     TokenizerCollate,
     TokenizerCollateConfig,
 )
-from .seq_dm import (
-    CollateConfig,
-    DatasetConfig,
-    SequenceDataModule,
-    SequenceDataModuleConfig,
-)
 
 __all__ = [
-    "CollateConfig",
-    "DatasetConfig",
-    "SequenceDataModule",
-    "SequenceDataModuleConfig",
     "TokenizerCollate",
     "TokenizerCollateConfig",
 ]

@@ -1,167 +1,65 @@
 # Modelling Package
 
-PyTorch Lightning-based framework for training models with configurable losses and metrics.
+Hugging Face `transformers.Trainer` training with Hydra-composed configs. Models are
+`PreTrainedModel` implementations whose `forward` returns a `loss` when `labels` are
+passed (as produced by `TokenizerCollate`).
 
-## Running Training
+## Running training
 
-Run commands from the **repository root** (the directory that contains `src/modelling/`).
-You must pass **every** component the CLI needs: at minimum **trainer**, **model**, and **data**.
-Nothing is merged or discovered automatically from filenames.
-
-```bash
-uv run modelling fit \
-  --config src/modelling/configs/trainer/grugru_vae.yaml \
-  --config src/modelling/configs/model/grugru_vae.yaml \
-  --config src/modelling/configs/data/grugru_vae.yaml \
-  --config src/modelling/configs/logger/grugru_vae.yaml \
-  --config src/modelling/configs/callbacks/checkpoint.yaml
-```
-
-Or the module entry point:
+From the **repository root**:
 
 ```bash
-uv run python -m modelling.src fit \
-  --config src/modelling/configs/trainer/grugru_vae.yaml \
-  --config src/modelling/configs/model/grugru_vae.yaml \
-  --config src/modelling/configs/data/grugru_vae.yaml \
-  --config src/modelling/configs/logger/grugru_vae.yaml \
-  --config src/modelling/configs/callbacks/checkpoint.yaml
+uv run modelling hydra.job.chdir=false
 ```
 
-Other Lightning subcommands need the same `--config` stack (trainer + model + data,
-plus logger/callbacks as needed):
+Defaults compose `configs/config.yaml` (model + data + training groups). Switch experiments:
 
 ```bash
-uv run modelling validate \
-  --config src/modelling/configs/trainer/grugru_vae.yaml \
-  --config src/modelling/configs/model/grugru_vae.yaml \
-  --config src/modelling/configs/data/grugru_vae.yaml
+uv run modelling --config-name=grugru_vae_streaming hydra.job.chdir=false
 ```
 
-### Shorter paths (optional)
-
-If you `cd src/modelling`, you can use `configs/...` instead of `src/modelling/configs/...`.
-
-## Experiment Tracking with MLflow
-
-Set `MLFLOW_TRACKING_URI` in your environment (via `.env` / direnv) to control where
-runs are stored:
+Hydra overrides (examples):
 
 ```bash
-# File-based (no server needed, default if unset)
-export MLFLOW_TRACKING_URI=sqlite:///mlflow-store/mlflow.db
-
-# Or point at a local MLflow server
-export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+uv run modelling hydra.job.chdir=false training.num_train_epochs=2 training.output_dir=/tmp/lamp-out
 ```
 
-Use `src/modelling/configs/logger/grugru_vae.yaml` for a fixed experiment name, or
-`src/modelling/configs/logger/mlflow_local.yaml` when something else (e.g. ZenML) overrides the
-experiment name at run time:
+Config root on disk: `src/modelling/configs/` (`config.yaml`, `model/`, `data/`, `training/`, and optional top-level experiment YAMLs such as `grugru_vae_streaming.yaml`).
+
+## MLflow
+
+Set in the environment (see repository `.env-default`):
+
+- `MLFLOW_TRACKING_URI` — tracking backend
+- `MLFLOW_EXPERIMENT_NAME` — experiment name (also set automatically by ZenML `train` when applicable)
+
+Training uses `TrainingArguments.report_to: [mlflow]`. When a run is active, `ManifestCallback`
+writes `training_manifest.json` (path from `TRAINING_MANIFEST_PATH`) and logs checkpoint + manifest
+artifacts (`MLFLOW_CHECKPOINT_ARTIFACT_PATH`, `MLFLOW_MANIFEST_ARTIFACT_PATH`).
+
+## Export to Hugging Face Hub
+
+Trainer checkpoints are **directories** (`config.json` + `model.safetensors`, …). Publish:
 
 ```bash
-uv run modelling fit \
-  --config src/modelling/configs/trainer/grugru_vae.yaml \
-  --config src/modelling/configs/model/grugru_vae.yaml \
-  --config src/modelling/configs/data/grugru_vae.yaml \
-  --config src/modelling/configs/logger/mlflow_local.yaml \
-  --config src/modelling/configs/callbacks/checkpoint.yaml
+uv run python -m modelling.src.utils.export_to_hf \
+  --weights-dir /path/to/checkpoint-XXXX \
+  --repo-id your-org/your-model
 ```
 
-When the training-manifest callback is active, training saves top checkpoints,
-writes `training_manifest.json`, and logs the checkpoint directory and manifest
-into the active MLflow run.
+(`--checkpoint` is a deprecated alias for `--weights-dir`.)
 
-### MLflow Utilities
-
-`modelling.src.utils.mlflow_utils` provides standalone helpers (no ZenML needed):
-
-- `get_mlflow_client()` -- configured from `MLFLOW_TRACKING_URI`
-- `download_artifact(run_id, artifact_path)` -- pull any artifact (checkpoint, config, etc.) from an MLflow run
-- `download_config(run_id)` -- pull the logged config YAML
-- `log_checkpoint_artifact(run_id, checkpoint_path)` -- push a `.ckpt` to a run
-- `log_artifact_directory(run_id, local_dir, artifact_path)` -- push a whole artifact subtree
-- `list_experiments()` / `list_runs(experiment_name)` -- browse runs
-
-## Configuration Structure
-
-Configs live under `src/modelling/configs/`:
-
-### Trainer Config (`trainer/*.yaml`)
-
-- Training hyperparameters (epochs, precision, devices, etc.)
-
-### Model Config (`model/*.yaml`)
-
-- Model class path and initialization arguments
-- Loss manager with multiple losses (each with class path, weight, key mappings)
-- Optimizer configuration (class path and kwargs)
-- Scheduler configuration (optional)
-
-### Data Config (`data/*.yaml`)
-
-- Dataset loading configuration
-- DataLoader settings (batch size, workers, etc.)
-- Train/validation splits
-
-### Logger Config (`logger/*.yaml`)
-
-- `grugru_vae.yaml` -- MLflow logger with experiment name `grugru_vae`
-- `mlflow_local.yaml` -- generic MLflow logger used by the pipelines, with run-scoped overrides applied at execution time
-
-### Callbacks Config (`callbacks/*.yaml`)
-
-- `checkpoint.yaml` -- ModelCheckpoint with `val/loss` monitoring
-
-## Merging configs
-
-Pass multiple `--config` files; **later files override earlier ones** for overlapping
-keys. There is no implicit loading of `model/` or `data/` YAMLs based on the
-trainer filename.
-
-```bash
-uv run modelling fit \
-  --config src/modelling/configs/trainer/grugru_vae.yaml \
-  --config src/modelling/configs/model/grugru_vae.yaml \
-  --config src/modelling/configs/data/grugru_vae.yaml \
-  --config src/modelling/configs/data/my_custom_data.yaml
-```
-
-### Config Structure
-
-Each config file follows Lightning CLI format with top-level keys:
-
-- `trainer:` - Trainer hyperparameters
-- `model:` - Model configuration (class_path, init_args)
-- `data:` - Data module configuration (class_path, init_args)
-- `logger:` - Logger configuration (list of loggers with class_path, init_args)
-
-## Package Structure
+## Package layout
 
 ```
 src/modelling/
+├── configs/              # Hydra YAML (config.yaml, model/, data/, training/)
 ├── src/
-│   ├── __main__.py          # Lightning CLI entry point
-│   ├── metamodule/          # Core training module
-│   │   ├── metamodule.py    # MetaModule and StepOutput
-│   │   ├── loss_manager.py  # Loss computation and management
-│   │   └── utils/          # Utilities (argument mapping, lightning config)
-│   ├── callbacks/           # PyTorch Lightning callbacks
-│   │   ├── metrics.py      # MetricsCallback
-│   │   └── training_manifest.py # writes deterministic MLflow manifest/artifacts
-│   ├── datamodules/         # Data loading modules
-│   │   └── seq_dm.py       # SequenceDataModule
-│   ├── models/              # Model implementations
-│   │   └── aes/            # Autoencoder models
-│   ├── utils/               # Shared utilities
-│   │   ├── importing.py    # Dynamic imports
-│   │   ├── mlflow_utils.py # MLflow checkpoint/artifact helpers
-│   │   └── export_to_hf.py # HuggingFace Hub export
-│   └── compute_numbers/     # Computation functions
-└── configs/                 # Configuration files
-    ├── trainer/            # Training configurations
-    ├── model/              # Model configurations
-    ├── data/               # Data configurations
-    ├── logger/             # Logger configurations (MLflow)
-    └── callbacks/          # Callback configurations (checkpoints)
+│   ├── training/         # Hydra entrypoint, build_trainer, dataset helpers
+│   ├── callbacks/        # ManifestCallback, IterableEpochCallback
+│   ├── datamodules/      # TokenizerCollate
+│   ├── models/
+│   ├── utils/            # export_to_hf, mlflow_utils, importing
+│   └── compute_numbers/
+└── pyproject.toml
 ```

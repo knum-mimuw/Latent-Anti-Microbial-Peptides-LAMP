@@ -4,9 +4,12 @@ from dataclasses import dataclass
 import torch
 import torch.nn as nn
 from einops import rearrange
+from torch.nn.functional import cross_entropy
 from transformers import GenerationMixin, PreTrainedModel
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.utils import ModelOutput
+
+from modelling.src.compute_numbers.fns import kl_gauss_unitgauss
 
 from .config import GRUVAEConfig
 
@@ -16,12 +19,16 @@ class GRUVAEOutput(ModelOutput):
     """Training forward outputs from :class:`GRUVAE`.
 
     ``logits`` are ``[batch, vocab_size, seq_len - 1]`` (channels-first for loss).
+    When ``labels`` is passed (training), ``loss`` is populated for
+    :class:`transformers.Trainer`.
     """
 
+    loss: torch.Tensor | None = None
     logits: torch.Tensor | None = None
     target: torch.Tensor | None = None
     mean: torch.Tensor | None = None
     log_std: torch.Tensor | None = None
+    sub_losses: dict[str, torch.Tensor] | None = None
 
 
 class GRUVAEEncoder(PreTrainedModel):
@@ -332,7 +339,7 @@ class GRUVAE(PreTrainedModel):
 
     Composes :class:`GRUVAEEncoder` and :class:`GRUVAEDecoder`.  The
     ``forward`` method runs the full encode → sample → decode pipeline and
-    returns :class:`GRUVAEOutput` (mapping-compatible for ``MetaModule`` / losses).
+    returns :class:`GRUVAEOutput` with optional ``loss`` when ``labels`` are passed.
 
     For generation, use the decoder directly::
 
@@ -351,7 +358,12 @@ class GRUVAE(PreTrainedModel):
         self.decoder = GRUVAEDecoder(config)
         self.post_init()
 
-    def forward(self, input_ids: torch.Tensor, **kwargs) -> GRUVAEOutput:
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        labels: torch.Tensor | None = None,
+        **kwargs,
+    ) -> GRUVAEOutput:
         """Full VAE training forward.
 
         The decoder is unrolled for ``S-1`` steps with **no teacher forcing**:
@@ -363,12 +375,15 @@ class GRUVAE(PreTrainedModel):
         Args:
             input_ids: ``[batch, seq_len]`` with format
                 ``[BOS, t1, ..., tn, EOS, PAD...]``
+            labels: Shifted targets ``[batch, seq_len - 1]`` for cross-entropy.
+                When provided (training), ``loss`` is ``CE + kl_beta * KL``.
             **kwargs: Ignored (e.g. ``attention_mask``).
 
         Returns:
             :class:`GRUVAEOutput` with ``logits`` ``[B, V, S-1]``, ``target``
-            ``[B, S-1]``, ``mean`` ``[B, latent_dim]``, ``log_std`` ``[B, latent_dim]``.
+            ``[B, S-1]``, ``mean`` / ``log_std``, and optional ``loss``.
         """
+        del kwargs  # attention_mask etc.; padding handled via ignore_index on CE targets
         mean, log_std = self.encoder.encode(input_ids)
         z = _sample_gaussian(mean, torch.exp(log_std))
 
@@ -378,4 +393,24 @@ class GRUVAE(PreTrainedModel):
         decoder_out = self.decoder.forward_latent_positions(z=z, num_steps=num_steps)
         logits = rearrange(decoder_out.logits, "b s v -> b v s")
 
-        return GRUVAEOutput(logits=logits, target=target, mean=mean, log_std=log_std)
+        loss = None
+        sub_losses = None
+        if labels is not None:
+            ce_loss = cross_entropy(
+                logits,
+                labels,
+                ignore_index=self.config.ignore_index,
+                label_smoothing=self.config.label_smoothing,
+            )
+            kl_loss = kl_gauss_unitgauss(mean, log_std)
+            loss = ce_loss + self.config.kl_beta * kl_loss
+            sub_losses = {"ce_loss": ce_loss, "kl_loss": kl_loss}
+
+        return GRUVAEOutput(
+            loss=loss,
+            logits=logits,
+            target=target,
+            mean=mean,
+            log_std=log_std,
+            sub_losses=sub_losses,
+        )

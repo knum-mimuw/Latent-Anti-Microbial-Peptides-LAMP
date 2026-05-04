@@ -79,11 +79,11 @@ def log_checkpoint_artifact(
     artifact_path: str = "checkpoints",
     tracking_uri: str | None = None,
 ) -> None:
-    """Log a checkpoint file as an artifact to an existing MLflow run.
+    """Log a checkpoint file or directory as an artifact to an existing MLflow run.
 
     Args:
         run_id: MLflow run ID.
-        checkpoint_path: Local path to the ``.ckpt`` file.
+        checkpoint_path: Local path to a file or directory (e.g. a Trainer checkpoint folder).
         artifact_path: Destination folder inside the run's artifact store.
         tracking_uri: Optional tracking URI override.
     """

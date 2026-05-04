@@ -1,0 +1,5 @@
+defaults:
+  - config
+  - override /model: grugru_vae
+  - override /data: grugru_vae_streaming
+  - override /training: grugru_vae_streaming
