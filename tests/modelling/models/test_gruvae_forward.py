@@ -25,7 +25,8 @@ def test_gruvae_forward_shapes() -> None:
 
     b, s = 2, 12
     input_ids = torch.randint(1, cfg.vocab_size, (b, s))
-    out = model(input_ids)
+    labels = input_ids[:, 1:]
+    out = model(input_ids, labels=labels)
 
     v = cfg.vocab_size
     assert out.logits.shape == (b, v, s - 1)
@@ -33,6 +34,21 @@ def test_gruvae_forward_shapes() -> None:
     assert out.mean.shape == (b, cfg.latent_dim)
     assert out.log_std.shape == (b, cfg.latent_dim)
     assert out["logits"] is out.logits
+    assert out.loss is not None
+    assert out.loss.ndim == 0
+    assert out.sub_losses is not None
+    assert out.sub_losses["ce_loss"] is not None
+    assert out.sub_losses["kl_loss"] is not None
+
+
+def test_gruvae_forward_no_labels_inference() -> None:
+    model, cfg = _tiny_gruvae()
+    b, s = 2, 12
+    input_ids = torch.randint(1, cfg.vocab_size, (b, s))
+    out = model(input_ids)
+    assert out.loss is None
+    assert out.sub_losses is None
+    assert out.logits is not None
 
 
 def test_decoder_forward_latent_positions_is_token_free() -> None:
