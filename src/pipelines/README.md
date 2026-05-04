@@ -32,20 +32,16 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
 
 ### Standalone (no ZenML)
 
-Training works without ZenML -- just use the Lightning CLI directly. Pass explicit
-`--config` files for trainer, model, data, and any logger/callbacks (nothing is
-auto-discovered). From the **repository root**:
+Training uses Hydra + Hugging Face `Trainer`. From the **repository root**:
 
 ```bash
-uv run modelling fit \
-  --config src/modelling/configs/trainer/grugru_vae.yaml \
-  --config src/modelling/configs/model/grugru_vae.yaml \
-  --config src/modelling/configs/data/grugru_vae.yaml \
-  --config src/modelling/configs/logger/mlflow_local.yaml \
-  --config src/modelling/configs/callbacks/checkpoint.yaml
+uv run modelling hydra.job.chdir=false
 ```
 
-See `src/modelling/README.md` for the same command using paths under `src/modelling/`.
+Optional YAML fragments (merged as Hydra dotlist overrides) can be passed when using ZenML;
+for manual runs, prefer CLI overrides or `--config-name`.
+
+See `src/modelling/README.md`.
 
 ### Via ZenML Pipeline
 
@@ -53,13 +49,13 @@ The same training, orchestrated by ZenML for lineage and metadata while MLflow
 remains the canonical owner of checkpoints and metrics:
 
 ```bash
-uv run python -m pipelines.training \
-  /tmp/lamp-run.yaml \
-  src/modelling/configs/trainer/grugru_vae.yaml \
-  src/modelling/configs/model/grugru_vae.yaml \
-  src/modelling/configs/data/grugru_vae.yaml \
-  src/modelling/configs/logger/mlflow_local.yaml \
-  src/modelling/configs/callbacks/checkpoint.yaml
+uv run python -m pipelines.training /tmp/lamp-run.yaml
+```
+
+Optional extra YAML paths append Hydra overrides (no Lightning `--config` stack):
+
+```bash
+uv run python -m pipelines.training /tmp/lamp-run.yaml /tmp/trainOverrides.yaml
 ```
 
 This flow writes a deterministic `training_manifest.json` during training and
@@ -74,7 +70,7 @@ known MLflow run and artifact path:
 uv run python -m pipelines.publish \
   /tmp/lamp-run.yaml \
   --run-id 8dcb3c4c7d4a4f54a58fd52ef0a5ef12 \
-  --artifact-path checkpoints/epoch=30-step=1200-val/loss=0.1234.ckpt \
+  --artifact-path checkpoints/checkpoint-1200 \
   --tag run-20260405
 ```
 
@@ -143,7 +139,7 @@ state uploaded as a new revision or tag:
 uv run python -m pipelines.publish \
   /tmp/lamp-run.yaml \
   --run-id c138b2d5e34c4d2da4ed1ebc4c02ab77 \
-  --artifact-path checkpoints/finetuned-01.ckpt \
+  --artifact-path checkpoints/checkpoint-5000 \
   --tag finetune-01
 ```
 
@@ -155,6 +151,7 @@ Consumers can keep loading from the same repo and pin a specific release with
 Set these in `.env` / direnv only for environment-level concerns:
 
 - `HF_TOKEN` -- write token for pushing model artifacts to Hugging Face
+- `MLFLOW_EXPERIMENT_NAME` -- optional default experiment (ZenML `train` sets this from the run YAML)
 - `MLFLOW_CHECKPOINT_ARTIFACT_PATH` -- canonical MLflow artifact subtree for checkpoints
 - `MLFLOW_MANIFEST_ARTIFACT_PATH` -- canonical MLflow artifact subtree for manifests
 - `TRAINING_MANIFEST_PATH` -- optional local override for where the training manifest is written

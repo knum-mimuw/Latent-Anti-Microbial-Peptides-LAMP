@@ -70,7 +70,7 @@ def main() -> None:
     parser.add_argument(
         "--artifact-path",
         default=None,
-        help="Artifact path inside the MLflow run, e.g. checkpoints/best.ckpt",
+        help="Artifact path inside the MLflow run, e.g. checkpoints/checkpoint-1200",
     )
     parser.add_argument(
         "--manifest-path",

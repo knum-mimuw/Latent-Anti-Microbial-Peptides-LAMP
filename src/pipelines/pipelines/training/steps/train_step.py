@@ -1,4 +1,4 @@
-"""Training step -- thin wrapper around the standalone Lightning CLI."""
+"""Training step — Hugging Face Trainer + Hydra via ``uv run modelling``."""
 
 import json
 import os
@@ -7,8 +7,9 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple
 
-import yaml
 from zenml import step
+
+from modelling.src.training.hydra_overrides import flatten_yaml_file
 
 from ...utils.pipeline_utils import lamp_repo_root, load_run_config
 
@@ -25,21 +26,16 @@ class TrainResult(NamedTuple):
 
 @step(enable_cache=False)
 def train(config_paths: list[str], run_config_path: str) -> TrainResult:
-    """Run Lightning training via CLI and return manifest-derived outputs."""
+    """Run modelling training and return manifest-derived outputs."""
     repo_root = lamp_repo_root()
     run_config = load_run_config(run_config_path)
     with tempfile.TemporaryDirectory(prefix="lamp-train-manifest-") as temp_dir:
         manifest_path = Path(temp_dir) / "training_manifest.json"
-        env = _build_training_env(manifest_path)
-        logger_override_path = Path(temp_dir) / "logger_override.yaml"
-        _write_logger_override(
-            path=logger_override_path,
-            experiment_name=run_config.mlflow.experiment_name,
-        )
+        env = _build_training_env(manifest_path, run_config.mlflow.experiment_name)
 
-        cmd: list[str] = ["uv", "run", "modelling", "fit"]
-        for cfg in [*config_paths, str(logger_override_path)]:
-            cmd.extend(["--config", cfg])
+        cmd: list[str] = ["uv", "run", "modelling"]
+        for cfg_path in config_paths:
+            cmd.extend(flatten_yaml_file(Path(cfg_path)))
 
         subprocess.run(
             cmd,
@@ -60,9 +56,10 @@ def train(config_paths: list[str], run_config_path: str) -> TrainResult:
     )
 
 
-def _build_training_env(manifest_path: Path) -> dict[str, str]:
+def _build_training_env(manifest_path: Path, experiment_name: str) -> dict[str, str]:
     env = dict(os.environ)
     env["TRAINING_MANIFEST_PATH"] = str(manifest_path)
+    env["MLFLOW_EXPERIMENT_NAME"] = experiment_name
     env.setdefault("MLFLOW_CHECKPOINT_ARTIFACT_PATH", "checkpoints")
     env.setdefault("MLFLOW_MANIFEST_ARTIFACT_PATH", "metadata")
     return env
@@ -71,7 +68,7 @@ def _build_training_env(manifest_path: Path) -> dict[str, str]:
 def _read_manifest(manifest_path: Path) -> dict[str, str]:
     if not manifest_path.exists():
         raise RuntimeError(
-            "Training did not produce a manifest. Ensure the checkpoint callback config is active."
+            "Training did not produce a manifest. Ensure MLflow reporting and ManifestCallback are active."
         )
 
     manifest = json.loads(manifest_path.read_text())
@@ -86,20 +83,3 @@ def _read_manifest(manifest_path: Path) -> dict[str, str]:
         raise RuntimeError(f"Training manifest is missing required fields: {', '.join(missing)}")
 
     return manifest
-
-
-def _write_logger_override(path: Path, experiment_name: str) -> None:
-    payload = {
-        "trainer": {
-            "logger": [
-                {
-                    "class_path": "pytorch_lightning.loggers.mlflow.MLFlowLogger",
-                    "init_args": {
-                        "experiment_name": experiment_name,
-                        "log_model": False,
-                    },
-                }
-            ]
-        }
-    }
-    path.write_text(yaml.safe_dump(payload, sort_keys=False))
