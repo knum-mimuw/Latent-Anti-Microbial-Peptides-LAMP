@@ -1,5 +1,5 @@
 _target_: transformers.training_args.TrainingArguments
-output_dir: outputs/grugru_vae
+output_dir: checkpoints
 overwrite_output_dir: true
 num_train_epochs: 200
 max_steps: -1
@@ -17,7 +17,7 @@ save_strategy: epoch
 save_total_limit: 2
 save_safetensors: true
 load_best_model_at_end: true
-metric_for_best_model: eval_val_loss
+metric_for_best_model: eval_loss
 greater_is_better: false
 fp16: true
 bf16: false

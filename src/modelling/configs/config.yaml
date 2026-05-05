@@ -4,15 +4,7 @@ defaults:
   - training: ???
   - _self_
 
-manifest:
-  manifest_path: null
-  checkpoint_artifact_path: checkpoints
-  manifest_artifact_path: metadata
-
 callbacks: []
-
-metrics:
-  compute_metrics_target: null
 
 hydra:
   job:

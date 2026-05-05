@@ -1,4 +1,4 @@
 from .iterable_epoch import IterableEpochCallback
-from .manifest import ManifestCallback
+from .logging import LoggingCallback
 
-__all__ = ["IterableEpochCallback", "ManifestCallback"]
+__all__ = ["IterableEpochCallback", "LoggingCallback"]

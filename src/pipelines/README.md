@@ -22,11 +22,21 @@ layer** -- all operations can be performed standalone via the `modelling` CLI.
    - Local artifact store (`zenml-artifacts/`)
    - MLflow experiment tracker (reads `MLFLOW_TRACKING_URI` from environment)
 
-3. Create a per-run config file:
+3. Copy per-run YAML configs from templates:
+
+   **Training only** (MLflow experiment name):
 
    ```bash
-   cp src/pipelines/pipelines/configs/run/training/grugru_vae_training_run.yaml /tmp/lamp-run.yaml
+   cp src/pipelines/pipelines/configs/run/training/grugru_vae_training_run.yaml /tmp/lamp-train-run.yaml
    ```
+
+   **Publish / train-and-publish with HF** (same MLflow experiment plus ZenML + Hugging Face):
+
+   ```bash
+   cp src/pipelines/pipelines/configs/run/training/grugru_vae_hf_publish_run.yaml /tmp/lamp-publish-run.yaml
+   ```
+
+   Copy whichever files you need; editing `/tmp/…` copies avoids churn in git-tracked templates.
 
 ## Usage
 
@@ -49,17 +59,17 @@ The same training, orchestrated by ZenML for lineage and metadata while MLflow
 remains the canonical owner of checkpoints and metrics:
 
 ```bash
-uv run python -m pipelines.training /tmp/lamp-run.yaml
+uv run python -m pipelines.training /tmp/lamp-train-run.yaml
 ```
 
-Optional extra YAML paths append Hydra overrides (no Lightning `--config` stack):
+Optional Hydra override YAML paths **after** the run config:
 
 ```bash
-uv run python -m pipelines.training /tmp/lamp-run.yaml /tmp/trainOverrides.yaml
+uv run python -m pipelines.training /tmp/lamp-train-run.yaml /tmp/trainOverrides.yaml
 ```
 
-This flow writes a deterministic `training_manifest.json` during training and
-logs both the checkpoint directory and manifest into the MLflow run.
+The `train` step runs HF Trainer via subprocess, then queries MLflow for the
+latest finished run and its checkpoint artifacts.
 
 ### Publish From MLflow To Hugging Face
 
@@ -68,19 +78,9 @@ known MLflow run and artifact path:
 
 ```bash
 uv run python -m pipelines.publish \
-  /tmp/lamp-run.yaml \
+  /tmp/lamp-publish-run.yaml \
   --run-id 8dcb3c4c7d4a4f54a58fd52ef0a5ef12 \
   --artifact-path checkpoints/checkpoint-1200 \
-  --tag run-20260405
-```
-
-Or publish from a local training manifest that already contains those explicit
-coordinates:
-
-```bash
-uv run python -m pipelines.publish \
-  /tmp/lamp-run.yaml \
-  --manifest-path /tmp/training_manifest.json \
   --tag run-20260405
 ```
 
@@ -92,22 +92,19 @@ This release upload includes:
 
 ### Train And Optionally Publish
 
-Use the composed pipeline when you want training to automatically publish the
-best checkpoint after it finishes:
+Use **`grugru_vae_hf_publish_run.yaml`** (or your `/tmp/lamp-publish-run.yaml` copy) for `--run-config` whenever ZenML needs `repo_id`, tags, or ZenML model linkage.
+
+Pure train-only ZenML runs still pass **`grugru_vae_training_run.yaml`** as the first argument (training pipeline ignores HF/ZenML sections anyway).
 
 ```bash
 uv run python -m pipelines.training.train_and_publish \
-  --run-config /tmp/lamp-run.yaml \
-  src/modelling/configs/trainer/grugru_vae.yaml \
-  src/modelling/configs/model/grugru_vae.yaml \
-  src/modelling/configs/data/grugru_vae.yaml \
-  src/modelling/configs/logger/mlflow_local.yaml \
-  src/modelling/configs/callbacks/checkpoint.yaml \
+  src/modelling/configs/grugru_vae.yaml \
+  --run-config /tmp/lamp-publish-run.yaml \
   --upload-to-hf \
   --tag run-20260405
 ```
 
-Leave `--upload-to-hf` off to keep this as a pure train-and-log run.
+Append extra modelling YAML fragments **before** `--run-config` if your workspace splits configs (`model/*.yaml`, `data/*.yaml`, etc.).
 
 ### Evaluate AMP Dataset From Hugging Face
 
@@ -137,7 +134,7 @@ state uploaded as a new revision or tag:
 
 ```bash
 uv run python -m pipelines.publish \
-  /tmp/lamp-run.yaml \
+  /tmp/lamp-publish-run.yaml \
   --run-id c138b2d5e34c4d2da4ed1ebc4c02ab77 \
   --artifact-path checkpoints/checkpoint-5000 \
   --tag finetune-01
@@ -153,8 +150,6 @@ Set these in `.env` / direnv only for environment-level concerns:
 - `HF_TOKEN` -- write token for pushing model artifacts to Hugging Face
 - `MLFLOW_EXPERIMENT_NAME` -- optional default experiment (ZenML `train` sets this from the run YAML)
 - `MLFLOW_CHECKPOINT_ARTIFACT_PATH` -- canonical MLflow artifact subtree for checkpoints
-- `MLFLOW_MANIFEST_ARTIFACT_PATH` -- canonical MLflow artifact subtree for manifests
-- `TRAINING_MANIFEST_PATH` -- optional local override for where the training manifest is written
 
 Run-varying identities come from a per-run YAML config, not env vars:
 
@@ -213,7 +208,8 @@ src/pipelines/                    # workspace member (depends on zenml + lamp-mo
     │   ├── pipeline.py         # @pipeline: evaluation_pipeline
     │   └── steps/
     └── configs/run/
-        ├── training/grugru_vae_training_run.yaml
+        ├── training/grugru_vae_training_run.yaml       # MLflow experiment (training-only)
+        ├── training/grugru_vae_hf_publish_run.yaml     # MLflow + ZenML + Hugging Face (publish / upload)
         └── evaluation/amp_eval.yaml
 
 src/pep_eval/                    # standalone AMP evaluation package

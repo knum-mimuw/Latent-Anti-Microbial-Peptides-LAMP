@@ -24,8 +24,6 @@ def publish_hf_pipeline(
     repo_id: str | None = None,
     run_id: str | None = None,
     artifact_path: str | None = None,
-    manifest_path: str | None = None,
-    manifest_artifact_path: str | None = None,
     revision: str | None = None,
     tag: str | None = None,
     private: bool = False,
@@ -38,12 +36,16 @@ def publish_hf_pipeline(
     """Publish any MLflow-managed checkpoint as a reusable standalone pipeline."""
     run_config = load_run_config(run_config_path)
     model_name, model_version = configured_model_target(run_config)
+
+    if not run_id or not artifact_path:
+        raise ValueError(
+            "Publishing requires explicit MLflow coordinates: --run-id and --artifact-path."
+        )
+
     publish_hf(
         repo_id=resolve_repo_id(repo_id, run_config),
         run_id=run_id,
         artifact_path=artifact_path,
-        manifest_path=manifest_path,
-        manifest_artifact_path=manifest_artifact_path,
         revision=resolve_revision(revision, run_config),
         tag=resolve_tag(tag, run_config),
         private=resolve_private(private, run_config),
@@ -66,21 +68,11 @@ def main() -> None:
         "run_config_path", help="Per-run YAML config for MLflow / HF / ZenML identities"
     )
     parser.add_argument("--repo-id", default=None, help="Target HF repo ID")
-    parser.add_argument("--run-id", default=None, help="MLflow run ID that owns the checkpoint")
+    parser.add_argument("--run-id", required=True, help="MLflow run ID that owns the checkpoint")
     parser.add_argument(
         "--artifact-path",
-        default=None,
+        required=True,
         help="Artifact path inside the MLflow run, e.g. checkpoints/checkpoint-1200",
-    )
-    parser.add_argument(
-        "--manifest-path",
-        default=None,
-        help="Local training manifest path containing run_id and checkpoint artifact coordinates",
-    )
-    parser.add_argument(
-        "--manifest-artifact-path",
-        default=None,
-        help="Optional MLflow artifact path for the training manifest",
     )
     parser.add_argument("--revision", default=None, help="Optional HF branch or revision")
     parser.add_argument("--tag", default=None, help="Optional immutable HF tag to create")
@@ -103,8 +95,6 @@ def main() -> None:
         repo_id=args.repo_id,
         run_id=args.run_id,
         artifact_path=args.artifact_path,
-        manifest_path=args.manifest_path,
-        manifest_artifact_path=args.manifest_artifact_path,
         revision=args.revision,
         tag=args.tag,
         private=args.private,
@@ -118,4 +108,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

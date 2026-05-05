@@ -36,9 +36,7 @@ def train_and_optional_publish_pipeline(
     run_config = load_run_config(run_config_path)
     model_name, model_version = configured_model_target(run_config)
     (
-        _checkpoint_path,
         checkpoint_artifact_path,
-        manifest_artifact_path,
         mlflow_run_id,
         experiment_name,
     ) = train(config_paths, run_config_path)
@@ -47,7 +45,6 @@ def train_and_optional_publish_pipeline(
         publish_hf(
             run_id=mlflow_run_id,
             artifact_path=checkpoint_artifact_path,
-            manifest_artifact_path=manifest_artifact_path,
             repo_id=resolve_repo_id(repo_id, run_config),
             revision=resolve_revision(revision, run_config),
             tag=resolve_tag(tag, run_config),

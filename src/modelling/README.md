@@ -32,10 +32,11 @@ Set in the environment (see repository `.env-default`):
 
 - `MLFLOW_TRACKING_URI` — tracking backend
 - `MLFLOW_EXPERIMENT_NAME` — experiment name (also set automatically by ZenML `train` when applicable)
+- `LAMP_REPO_ROOT` — repository root (defaults to current working directory when unset; ZenML `train` sets this explicitly)
 
-Training uses `TrainingArguments.report_to: [mlflow]`. When a run is active, `ManifestCallback`
-writes `training_manifest.json` (path from `TRAINING_MANIFEST_PATH`) and logs checkpoint + manifest
-artifacts (`MLFLOW_CHECKPOINT_ARTIFACT_PATH`, `MLFLOW_MANIFEST_ARTIFACT_PATH`).
+Training uses `TrainingArguments.report_to: [mlflow]`. Checkpoints are saved to
+`output_dir` (configured in training YAML) and logged as MLflow artifacts automatically
+by the HF MLflow integration.
 
 ## Export to Hugging Face Hub
 
@@ -56,7 +57,7 @@ src/modelling/
 ├── configs/              # Hydra YAML (config.yaml, model/, data/, training/)
 ├── src/
 │   ├── training/         # Hydra entrypoint, build_trainer, dataset helpers
-│   ├── callbacks/        # ManifestCallback, IterableEpochCallback
+│   ├── callbacks/        # LoggingCallback, IterableEpochCallback
 │   ├── datamodules/      # TokenizerCollate
 │   ├── models/
 │   ├── utils/            # export_to_hf, mlflow_utils, importing
