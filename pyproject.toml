@@ -27,7 +27,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["lamp"]
+known-first-party = ["lamp", "amp_opt"]
 combine-as-imports = true
 
 [tool.ruff.format]
@@ -58,6 +58,7 @@ required-version = ">=0.9.17"
 # Include the setup package (data preparation tools) as a workspace member
 members = [
   "./setup",
+  "src/amp_opt",
   "src/apex",
   "src/hydramp",
   "src/pep_eval",
@@ -70,3 +71,4 @@ members = [
 lamp-modelling = { workspace = true }
 pep-eval = { workspace = true }
 lamp-apex = { workspace = true }
+lamp-amp-opt = { workspace = true }

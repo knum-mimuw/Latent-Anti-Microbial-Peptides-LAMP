@@ -1,0 +1,36 @@
+[project]
+name = "lamp-amp-opt"
+version = "0.1.0"
+description = "APEX-driven AMP optimization with evosax random search"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "lamp-apex",
+    "pep-eval",
+    "numpy>=2.0.0",
+    "pyyaml>=6.0.0",
+    "jax>=0.8.0",
+    "jaxlib>=0.8.0",
+    "evosax>=0.2.0",
+    "typer>=0.20.0",
+]
+
+[project.scripts]
+lamp-amp-opt = "amp_opt.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"amp_opt" = ["configs/*.yaml"]
+
+[tool.uv.sources]
+lamp-apex = { workspace = true }
+pep-eval = { workspace = true }
