@@ -1,11 +1,31 @@
-"""AMP optimization package with APEX oracle and evosax search."""
+"""AMP optimization package: extensible optimization stack with APEX oracle."""
 
-from .evosax_runner import RandomSearchConfig, run_random_search
+from .core import (
+    ApexPanelObjective,
+    Candidate,
+    GenerationRecord,
+    OptimizationArchive,
+    OptimizationResult,
+    OptimizationRunner,
+    OptimizerMethod,
+    ScoreTransform,
+    SequenceObjective,
+)
+from .methods.random_search import RandomSearchConfig, RandomSearchMethod
 from .oracle import ApexPanelOracle, ObjectivePanel
 
 __all__ = [
+    "ApexPanelObjective",
     "ApexPanelOracle",
+    "Candidate",
+    "GenerationRecord",
     "ObjectivePanel",
+    "OptimizationArchive",
+    "OptimizationResult",
+    "OptimizationRunner",
+    "OptimizerMethod",
     "RandomSearchConfig",
-    "run_random_search",
+    "RandomSearchMethod",
+    "ScoreTransform",
+    "SequenceObjective",
 ]

@@ -1,4 +1,4 @@
-"""Sampling functions used by evosax RandomSearch."""
+"""JAX sampling function for random-mutation proposals."""
 
 from __future__ import annotations
 
@@ -13,21 +13,20 @@ SamplingFn = Callable[[jax.Array], jax.Array]
 
 def build_random_mutation_sampling_fn(
     *,
-    reference_population: np.ndarray,
+    parent_genomes: np.ndarray,
     vocab_size: int,
     mutation_count: int = 1,
 ) -> SamplingFn:
-    """Create a random-mutation style sampler.
+    """Build a JAX-compatible sampler that mutates random parents.
 
-    The sampler picks a random parent from `reference_population`, mutates
-    `mutation_count` positions with uniformly sampled symbols, and returns one
-    candidate genome.
+    Picks a random parent from `parent_genomes`, mutates `mutation_count`
+    random positions to random symbols, returns one candidate genome.
     """
     if mutation_count <= 0:
         raise ValueError("mutation_count must be positive.")
-    ref = jnp.asarray(reference_population, dtype=jnp.int32)
+    ref = jnp.asarray(parent_genomes, dtype=jnp.int32)
     if ref.ndim != 2:
-        raise ValueError("reference_population must be rank-2 [num_refs, genome_len].")
+        raise ValueError("parent_genomes must be rank-2 [num_parents, genome_len].")
     if vocab_size <= 1:
         raise ValueError("vocab_size must be > 1.")
     genome_len = ref.shape[1]

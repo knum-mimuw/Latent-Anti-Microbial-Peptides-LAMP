@@ -3,7 +3,7 @@ from __future__ import annotations
 import jax
 import numpy as np
 
-from amp_opt.sampling import build_random_mutation_sampling_fn
+from amp_opt.methods.random_search.sampler import build_random_mutation_sampling_fn
 
 
 def test_random_mutation_sampling_shape_and_bounds() -> None:
@@ -15,7 +15,7 @@ def test_random_mutation_sampling_shape_and_bounds() -> None:
         dtype=np.int32,
     )
     sampling_fn = build_random_mutation_sampling_fn(
-        reference_population=reference,
+        parent_genomes=reference,
         vocab_size=21,
         mutation_count=2,
     )
