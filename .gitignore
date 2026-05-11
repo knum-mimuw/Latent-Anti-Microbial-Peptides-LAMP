@@ -47,6 +47,8 @@ tmp-mlruns/
 
 # outputs
 outputs/
+data/
+results/
 
 # dev directory
 dev/

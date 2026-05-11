@@ -1,0 +1,45 @@
+seeds:
+  path: data/seeds.csv
+  id_column: id
+  sequence_column: sequence
+
+output:
+  directory: results/optimization/random_mutation/gram_negative_log2
+  mode: write
+
+black_box:
+  apex:
+    path: default
+    device: cuda
+    batch_size: 512
+  columns:
+    mode: explicit
+    panel: null
+    pathogen_names:
+      - "A. baumannii ATCC 19606"
+      - "E. coli ATCC 11775"
+      - "E. coli AIG221"
+      - "E. coli AIG222"
+      - "K. pneumoniae ATCC 13883"
+      - "P. aeruginosa PA01"
+      - "P. aeruginosa PA14"
+  aggregation: mean
+  mic_transform: log2
+
+optimization:
+  random_seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+  max_total_evaluations: 2000
+  max_iterations: null
+  solver:
+    import_path: amp_opt.random_mutation_solver:ProteinRandomMutation
+    kwargs:
+      n_mutations: 1
+      top_k: 1
+      greedy: true
+      batch_size: 1
+      mutation_token_probs: null
