@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "LAMP workspace with multiple packages for antimicrobial peptide modelling and exploration"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+  "lamp-amp-opt",
+]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -27,7 +29,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["lamp", "amp_opt"]
+known-first-party = ["lamp", "amp_opt", "pep_compass_jr"]
 combine-as-imports = true
 
 [tool.ruff.format]
@@ -47,6 +49,8 @@ dev = [
   "mlflow>=3.10.1",
   "ipykernel>=7.2.0",
   "pytest>=8.4.1",
+  "biopython>=1.87",
+  "lamp-pep-compass-jr",
 ]
 
 [tool.uv]
@@ -72,3 +76,4 @@ lamp-modelling = { workspace = true }
 pep-eval = { workspace = true }
 lamp-apex = { workspace = true }
 lamp-amp-opt = { workspace = true }
+lamp-pep-compass-jr = { workspace = true }

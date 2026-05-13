@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-03T18:00:48.514372011Z"
+exclude-newer = "2026-05-05T18:50:17.001714639Z"
 exclude-newer-span = "P7D"
 
 [manifest]
@@ -1328,20 +1328,28 @@ wheels = [
 name = "lamp"
 version = "0.1.0"
 source = { editable = "." }
+dependencies = [
+    { name = "lamp-amp-opt" },
+]
 
 [package.dev-dependencies]
 dev = [
+    { name = "biopython" },
     { name = "ipykernel" },
+    { name = "lamp-pep-compass-jr" },
     { name = "mlflow" },
     { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
+requires-dist = [{ name = "lamp-amp-opt", editable = "src/amp_opt" }]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "biopython", specifier = ">=1.87" },
     { name = "ipykernel", specifier = ">=7.2.0" },
+    { name = "lamp-pep-compass-jr", editable = "src/pep_compass_jr" },
     { name = "mlflow", specifier = ">=3.10.1" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "ruff", specifier = ">=0.5.0" },
@@ -1425,7 +1433,19 @@ requires-dist = [
 [[package]]
 name = "lamp-pep-compass-jr"
 version = "0.1.0"
-source = { virtual = "src/pep_compass_jr" }
+source = { editable = "src/pep_compass_jr" }
+dependencies = [
+    { name = "einops" },
+    { name = "numpy" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "einops", specifier = ">=0.8.1" },
+    { name = "numpy", specifier = ">=1.26.0" },
+    { name = "torch", specifier = ">=2.9.0" },
+]
 
 [[package]]
 name = "lamp-pipelines"
