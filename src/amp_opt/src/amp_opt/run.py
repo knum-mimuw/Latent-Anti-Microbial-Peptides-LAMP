@@ -99,10 +99,10 @@ def run_with_config(config_path: Path) -> None:
             )
         rows = list(reader)
 
+    output_root.mkdir(parents=True, exist_ok=True)
     for random_seed in opt.random_seeds:
         rng_seed = int(random_seed)
-        out_path = output_root / f"seed_{rng_seed}" / "runs.csv"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path = output_root / f"seed_{rng_seed}.csv"
         if cfg.output.mode == "append":
             need_header = not out_path.exists() or out_path.stat().st_size == 0
         else:
