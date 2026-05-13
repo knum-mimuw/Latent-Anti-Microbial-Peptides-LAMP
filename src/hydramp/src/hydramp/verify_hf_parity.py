@@ -5,10 +5,6 @@ loaded into `HydrAMPModel`, an export bundle is written, and `AutoModel.from_pre
 that bundle with ``trust_remote_code=True``.
 
 For reproducibility, use CPU, ``model.eval()``, and a fixed manual seed (see ``run_parity``).
-
-The optional third path from the project plan — ``pep_compass_jr`` ``HydrAMPEncoderDecoder`` —
-uses a different encoder input representation (one-hot via ``pep_compass`` utilities) than the
-token-id HydrAMP stack here; it is not compared in this script to avoid a misleading mismatch.
 """
 
 from __future__ import annotations
