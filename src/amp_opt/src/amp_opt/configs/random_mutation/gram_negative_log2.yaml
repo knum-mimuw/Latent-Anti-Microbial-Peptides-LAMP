@@ -1,5 +1,5 @@
-seeds:
-  path: data/seeds.csv
+seed_sequences:
+  path: data/pep_compass_seeds.csv
   id_column: id
   sequence_column: sequence
 
@@ -33,10 +33,15 @@ optimization:
     - 2
     - 3
     - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
   max_total_evaluations: 2000
   max_iterations: null
   solver:
-    import_path: amp_opt.random_mutation_solver:ProteinRandomMutation
+    factory_import_path: amp_opt.solver_factories:protein_random_mutation
     kwargs:
       n_mutations: 1
       top_k: 1

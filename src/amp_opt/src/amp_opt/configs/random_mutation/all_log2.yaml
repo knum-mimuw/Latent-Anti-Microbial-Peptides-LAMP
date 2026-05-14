@@ -1,10 +1,10 @@
-seeds:
-  path: data/seeds.csv
+seed_sequences:
+  path: data/pep_compass_seeds.csv
   id_column: id
   sequence_column: sequence
 
 output:
-  directory: results/optimization/random_mutation/gram_positive_log2
+  directory: results/optimization/random_mutation/all_log2
   mode: write
 
 black_box:
@@ -13,13 +13,9 @@ black_box:
     device: cuda
     batch_size: 512
   columns:
-    mode: explicit
+    mode: all
     panel: null
-    pathogen_names:
-      - "S. aureus ATCC 12600"
-      - "S. aureus (ATCC BAA-1556) - MRSA"
-      - "vancomycin-resistant E. faecalis ATCC 700802"
-      - "vancomycin-resistant E. faecium ATCC 700221"
+    pathogen_names: null
   aggregation: mean
   mic_transform: log2
 
@@ -30,10 +26,15 @@ optimization:
     - 2
     - 3
     - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
   max_total_evaluations: 2000
   max_iterations: null
   solver:
-    import_path: amp_opt.random_mutation_solver:ProteinRandomMutation
+    factory_import_path: amp_opt.solver_factories:protein_random_mutation
     kwargs:
       n_mutations: 1
       top_k: 1
