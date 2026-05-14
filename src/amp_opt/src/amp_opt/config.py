@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -11,7 +11,15 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from amp_opt.sequence_constants import MAX_PEPTIDE_LENGTH
 
 
-class SeedsConfig(BaseModel):
+def _one_colon_import_path(path: str, *, field_name: str) -> None:
+    if path.count(":") != 1:
+        raise ValueError(f"{field_name} must contain exactly one ':', got {path!r}.")
+    mod, attr = path.split(":", 1)
+    if not mod or not attr:
+        raise ValueError(f"{field_name} must be 'module:callable', got {path!r}.")
+
+
+class SeedSequencesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     path: Path
@@ -66,8 +74,13 @@ class BlackBoxConfig(BaseModel):
 class SolverConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    import_path: str
+    factory_import_path: str
     kwargs: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_factory_path(self) -> Self:
+        _one_colon_import_path(self.factory_import_path, field_name="solver.factory_import_path")
+        return self
 
 
 class OptimizationConfig(BaseModel):
@@ -99,7 +112,7 @@ class OptimizationConfig(BaseModel):
 class RunConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    seeds: SeedsConfig
+    seed_sequences: SeedSequencesConfig
     output: OutputConfig
     black_box: BlackBoxConfig = Field(default_factory=BlackBoxConfig)
     optimization: OptimizationConfig

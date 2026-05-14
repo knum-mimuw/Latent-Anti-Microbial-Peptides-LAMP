@@ -26,10 +26,10 @@ def _write_result_row(writer: csv.DictWriter, fh, meta: dict, **kwargs) -> None:
     fh.flush()
 
 
-def import_from_path(import_path: str) -> Any:
-    mod_name, sep, attr = import_path.partition(":")
+def import_from_path(qualified: str) -> Any:
+    mod_name, sep, attr = qualified.partition(":")
     if not sep or not mod_name or not attr:
-        raise ValueError(f"Invalid import_path {import_path!r}; expected 'module:ClassName'.")
+        raise ValueError(f"Invalid import {qualified!r}; expected 'module:callable'.")
     module = importlib.import_module(mod_name)
     return getattr(module, attr)
 
@@ -44,11 +44,11 @@ def run_with_config(config_path: Path) -> None:
     signature = black_box_signature(cfg.black_box, len(mic_indices))
 
     opt = cfg.optimization
-    solver_path = opt.solver.import_path
-    solver_cls = import_from_path(solver_path)
-    if not isinstance(solver_cls, type) or not issubclass(solver_cls, StepByStepSolver):
+    factory_path = opt.solver.factory_import_path
+    factory = import_from_path(factory_path)
+    if not callable(factory):
         raise TypeError(
-            f"solver.import_path {solver_path!r} must name a StepByStepSolver subclass."
+            f"solver.factory_import_path {factory_path!r} must name a callable factory."
         )
 
     eval_cap = opt.max_total_evaluations
@@ -63,7 +63,7 @@ def run_with_config(config_path: Path) -> None:
         "status",
         "error_message",
         "config_path",
-        "solver_import_path",
+        "solver_factory_path",
         "apex_path",
         "aggregation",
         "mic_transform",
@@ -82,19 +82,19 @@ def run_with_config(config_path: Path) -> None:
     else:
         raise ValueError(f"Unknown output mode {cfg.output.mode!r}")
 
-    seed_path = cfg.seeds.path
+    seed_path = cfg.seed_sequences.path
     with seed_path.open(encoding="utf-8", newline="") as sfh:
         reader = csv.DictReader(sfh)
-        id_col = cfg.seeds.id_column
-        seq_col = cfg.seeds.sequence_column
+        id_col = cfg.seed_sequences.id_column
+        seq_col = cfg.seed_sequences.sequence_column
         if reader.fieldnames is None or id_col not in reader.fieldnames:
             raise ValueError(
-                f"Seeds CSV {seed_path} must contain column {id_col!r}; "
+                f"Seed sequences CSV {seed_path} must contain column {id_col!r}; "
                 f"have {reader.fieldnames!r}."
             )
         if seq_col not in reader.fieldnames:
             raise ValueError(
-                f"Seeds CSV {seed_path} must contain column {seq_col!r}; "
+                f"Seed sequences CSV {seed_path} must contain column {seq_col!r}; "
                 f"have {reader.fieldnames!r}."
             )
         rows = list(reader)
@@ -122,7 +122,7 @@ def run_with_config(config_path: Path) -> None:
                 )
                 common_meta = {
                     "config_path": str(config_path.resolve()),
-                    "solver_import_path": solver_path,
+                    "solver_factory_path": factory_path,
                     "apex_path": cfg.black_box.apex.path,
                     "aggregation": cfg.black_box.aggregation,
                     "mic_transform": cfg.black_box.mic_transform,
@@ -166,7 +166,17 @@ def run_with_config(config_path: Path) -> None:
                     x0 = np.array([list(normalized)])
                     y0 = black_box_inst(x0)
 
-                    solver = solver_cls(black_box_inst, x0, y0, **opt.solver.kwargs)
+                    solver = factory(
+                        black_box_inst,
+                        x0,
+                        y0,
+                        dict(opt.solver.kwargs),
+                    )
+                    if not isinstance(solver, StepByStepSolver):
+                        raise TypeError(
+                            f"Solver factory {factory_path!r} must return a StepByStepSolver; "
+                            f"got {type(solver).__name__}."
+                        )
 
                     iterations = 0
                     while True:
