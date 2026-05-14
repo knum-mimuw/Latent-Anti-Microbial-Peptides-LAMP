@@ -51,6 +51,8 @@ dev = [
   "pytest>=8.4.1",
   "biopython>=1.87",
   "lamp-pep-compass-jr",
+  "transformers>=4.52.0",
+  "huggingface_hub>=0.32.0",
 ]
 
 [tool.uv]
