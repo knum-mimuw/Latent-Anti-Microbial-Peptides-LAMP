@@ -1,0 +1,53 @@
+seed_sequences:
+  path: data/pep_compass_seeds.csv
+  id_column: id
+  sequence_column: sequence
+
+output:
+  directory: results/optimization/brownian_hydramp/mdr_eskape_log2
+  mode: write
+
+black_box:
+  apex:
+    path: default
+    device: cuda
+    batch_size: 512
+  columns:
+    mode: explicit
+    panel: null
+    pathogen_names:
+      - "E. coli AIG222"
+      - "S. aureus (ATCC BAA-1556) - MRSA"
+      - "vancomycin-resistant E. faecalis ATCC 700802"
+      - "vancomycin-resistant E. faecium ATCC 700221"
+  aggregation: mean
+  mic_transform: log2
+
+optimization:
+  random_seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+  max_total_evaluations: 2000
+  max_iterations: null
+  solver:
+    factory_import_path: amp_opt.brownian_hydramp_init:build_brownian_hydramp_solver
+    kwargs:
+      hf_model_repo_id: pszmk/hydramp
+      hf_tokenizer_repo_id: pszmk/hydramp-aa-tokenizer
+      device: cuda
+      jacobian_mode: approx
+      jacobian_eps: 1.0e-4
+      sigma: 0.1
+      scaling_mode: projected
+      direction_significance_threshold: 0.1
+      top_k: 1
+      greedy: true
+      batch_size: 1
