@@ -147,3 +147,28 @@ tasks:
         else
           echo "No HF cache found for {{.REPO_ID}} at $repo_dir"
         fi
+
+  amp-opt:spool:
+    desc: >-
+      Enqueue all YAML configs in CONFIG_DIR via task-spooler (ts).
+      Pass ts flags via TS_ARGS (e.g. TS_ARGS="-G 1" for GPU slot,
+      TS_ARGS="-n -L label" for nslots/labels, etc.).
+    requires:
+      vars: [CONFIG_DIR]
+    vars:
+      TS_ARGS: ""
+    cmds:
+      - |
+        set -eu
+        dir="{{.CONFIG_DIR}}"
+        if [ ! -d "$dir" ]; then
+          echo "Directory not found: $dir" >&2
+          exit 1
+        fi
+        count=0
+        for cfg in "$dir"/*.yaml; do
+          [ -f "$cfg" ] || continue
+          ts {{.TS_ARGS}} uv run lamp-amp-opt --config "$cfg"
+          count=$((count + 1))
+        done
+        echo "Enqueued $count jobs from $dir"

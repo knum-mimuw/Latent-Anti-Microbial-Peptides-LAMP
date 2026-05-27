@@ -83,7 +83,7 @@ class HydrAMPModel(PreTrainedModel):
         out = self.decoder(
             decoder_input,
             return_logits=return_logits,
-            gumbel_temperature=self.config.temperature,
+            gumbel_temperature=self.config.gumbel_temperature,
         )
         return CausalLMOutputWithPast(logits=out, past_key_values=None)
 
@@ -99,6 +99,34 @@ class HydrAMPModel(PreTrainedModel):
         ).logits
         assert logits is not None
         return logits.argmax(dim=-1)
+
+    def sample_latent(
+        self,
+        input_ids: torch.Tensor,
+        tau: float = 1.0,
+        num_samples: int = 1,
+    ) -> torch.Tensor:
+        """Reparameterized posterior sample: ``z = mean + tau * exp(log_std) * eps``.
+
+        This implements the analogue-generation temperature from Szymczak *et al.*
+        (Nature Comms 2023).  Larger ``tau`` explores further from the prototype.
+
+        Returns shape ``[batch * num_samples, latent_dim]``.
+        """
+        mean, log_std = self.encoder.encode(input_ids)
+        if num_samples > 1:
+            mean = mean.repeat_interleave(num_samples, dim=0)
+            log_std = log_std.repeat_interleave(num_samples, dim=0)
+        return mean + tau * torch.exp(log_std) * torch.randn_like(mean)
+
+    def sample_prior(self, batch_size: int) -> torch.Tensor:
+        """Sample from the standard normal prior N(0, I) for unconstrained generation.
+
+        Returns shape ``[batch_size, latent_dim]``.
+        """
+        return torch.randn(
+            batch_size, self.config.latent_dim, device=self.device
+        )
 
     def forward(self, input_ids: torch.Tensor, **_: object) -> HydrAMPOutput:
         """Run encode + deterministic decode for reconstruction."""

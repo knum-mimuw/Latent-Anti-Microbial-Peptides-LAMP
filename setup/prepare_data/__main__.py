@@ -5,6 +5,8 @@ from .create_huggingface_dataset_repo import (
     create_huggingface_dataset_repo_command,
 )
 from .prepare_and_upload_apex_predictions import prepare_and_upload_apex_predictions_command
+from .prepare_and_upload_dbaasp import prepare_and_upload_dbaasp_command
+from .prepare_and_upload_dbamp import prepare_and_upload_dbamp_command
 from .prepare_and_upload_esm2_uniref import prepare_and_upload_esm2_uniref_command
 from .prepare_and_upload_physicochemical_properties import (
     prepare_and_upload_physicochemical_properties_command,
@@ -22,6 +24,8 @@ app = typer.Typer(
 
 app.command("create_huggingface_dataset_repo")(create_huggingface_dataset_repo_command)
 app.command("prepare_and_upload_esm2_uniref")(prepare_and_upload_esm2_uniref_command)
+app.command("prepare_and_upload_dbaasp")(prepare_and_upload_dbaasp_command)
+app.command("prepare_and_upload_dbamp")(prepare_and_upload_dbamp_command)
 app.command("prepare_and_upload_apex_predictions")(prepare_and_upload_apex_predictions_command)
 app.command("prepare_and_upload_strain_conditions")(prepare_and_upload_strain_conditions_command)
 app.command("prepare_and_upload_physicochemical_properties")(

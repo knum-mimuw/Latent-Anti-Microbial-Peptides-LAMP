@@ -286,6 +286,30 @@ with torch.no_grad():
 greedy_ids = model.decode_to_token_ids(z)  # or logits.argmax(dim=-1)
 ```
 
+## Analogue generation (latent sampling with temperature)
+
+``sample_latent`` implements the paper's creativity parameter *τ*
+(Szymczak *et al.*, Nature Comms 2023): ``z = μ + τ·σ·ε``.
+Larger ``tau`` explores further from the prototype in latent space.
+
+```python
+with torch.no_grad():
+    z = model.sample_latent(batch["input_ids"], tau=2.0, num_samples=8)
+    logits = model.forward_latent_positions(z).logits
+    ids = logits.argmax(dim=-1)
+```
+
+## Unconstrained generation
+
+``sample_prior`` draws from the standard normal prior *N(0, I)*
+for de-novo peptide generation.
+
+```python
+with torch.no_grad():
+    z = model.sample_prior(batch_size=64)
+    ids = model.decode_to_token_ids(z)
+```
+
 {HYDRAMP_README_CITATION_SECTION}
 ## Export provenance
 

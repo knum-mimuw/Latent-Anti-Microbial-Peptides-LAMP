@@ -1,0 +1,26 @@
+# Configuration for dbAMP peptide ingestion and upload
+# Unions the two anti-Gram-{negative,positive} FASTA files from data/dbamp/
+# (dbAMP v3.0, RELEASE 06/2024) into a single subset of the LAMP-datasets repo
+# with one row per unique dbAMP id and two boolean activity columns.
+
+prepare:
+  antigram_n_path: data/dbamp/dbAMP_AntiGram_n_2024.fasta
+  antigram_p_path: data/dbamp/dbAMP_AntiGram_p_2024.fasta
+  max_length: 50
+  allowed_amino_acids: ACDEFGHIKLMNPQRSTVWY
+  max_sequences: null
+  source_version: "v3.0 (RELEASE 06/2024)"
+
+upload:
+  repo_id: pszmk/LAMP-datasets
+  subset_name: dbamp_peptides_leq50aa
+
+  commit_message: "Add dbAMP v3.0 (RELEASE 06/2024) peptides (≤50 AA, canonical AA, gram-n/p labels)"
+  token: null  # Will use HF_TOKEN environment variable if not set
+
+  # Column mapping for Hugging Face dataset (source field -> target column)
+  columns:
+    dbamp_id: dbamp_id
+    sequence: sequence
+    anti_gram_negative: anti_gram_negative
+    anti_gram_positive: anti_gram_positive

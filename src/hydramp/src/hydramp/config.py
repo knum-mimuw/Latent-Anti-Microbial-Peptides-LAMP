@@ -22,7 +22,7 @@ class HydrAMPConfig(PretrainedConfig):
         encoder_hidden_size: int = 128,
         decoder_hidden_size: int = 100,
         default_condition: list[float] | None = None,
-        temperature: float = 1.0,
+        gumbel_temperature: float = 1.0,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
@@ -34,7 +34,7 @@ class HydrAMPConfig(PretrainedConfig):
         self.encoder_hidden_size = encoder_hidden_size
         self.decoder_hidden_size = decoder_hidden_size
         self.default_condition = default_condition or [1.0, 1.0]
-        self.temperature = temperature
+        self.gumbel_temperature = gumbel_temperature
         self.auto_map = {
             "AutoConfig": "config.HydrAMPConfig",
             "AutoModel": "model.HydrAMPModel",

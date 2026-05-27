@@ -29,7 +29,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["lamp", "amp_opt", "pep_compass_jr"]
+known-first-party = ["lamp", "amp_opt", "lamp_blosum_matrix", "pep_compass_jr"]
 combine-as-imports = true
 
 [tool.ruff.format]
@@ -41,6 +41,7 @@ skip-magic-trailing-comma = false
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests that require external tools (deselect with '-m \"not integration\"')",
 ]
 
 [dependency-groups]
@@ -66,6 +67,7 @@ members = [
   "./setup",
   "src/amp_opt",
   "src/apex",
+  "src/blosum_matrix",
   "src/hydramp",
   "src/pep_eval",
   "src/pep_compass_jr",
@@ -78,4 +80,5 @@ lamp-modelling = { workspace = true }
 pep-eval = { workspace = true }
 lamp-apex = { workspace = true }
 lamp-amp-opt = { workspace = true }
+lamp-blosum-matrix = { workspace = true }
 lamp-pep-compass-jr = { workspace = true }

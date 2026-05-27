@@ -7,7 +7,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-05-07T16:50:20.100382045Z"
+exclude-newer = "2026-05-07T19:37:07.019317497Z"
 exclude-newer-span = "P7D"
 
 [manifest]
@@ -16,6 +16,7 @@ members = [
     "lamp",
     "lamp-amp-opt",
     "lamp-apex",
+    "lamp-blosum-matrix",
     "lamp-modelling",
     "lamp-pep-compass-jr",
     "lamp-pipelines",
@@ -1417,6 +1418,30 @@ requires-dist = [
 ]
 
 [[package]]
+name = "lamp-blosum-matrix"
+version = "0.1.0"
+source = { editable = "src/blosum_matrix" }
+dependencies = [
+    { name = "biopython" },
+    { name = "numpy" },
+    { name = "typer" },
+]
+
+[package.optional-dependencies]
+cdhit = [
+    { name = "py-cdhit" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "biopython", specifier = ">=1.87" },
+    { name = "numpy", specifier = ">=1.26,<2" },
+    { name = "py-cdhit", marker = "extra == 'cdhit'", specifier = ">=1.1.5" },
+    { name = "typer", specifier = ">=0.20.0" },
+]
+provides-extras = ["cdhit"]
+
+[[package]]
 name = "lamp-modelling"
 version = "0.1.0"
 source = { editable = "src/modelling" }
@@ -2456,6 +2481,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cd/05/0a34433a064256a578f1783a10da6df098ceaa4a57bbeaa96a6c0352786b/pure_eval-0.2.3.tar.gz", hash = "sha256:5f4e983f40564c576c7c8635ae88db5956bb2229d7e9237d03b3c0b0190eaf42", size = 19752, upload-time = "2024-07-21T12:58:21.801Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8e/37/efad0257dc6e593a18957422533ff0f87ede7c9c6ea010a2177d738fb82f/pure_eval-0.2.3-py3-none-any.whl", hash = "sha256:1db8e35b67b3d218d818ae653e27f06c3aa420901fa7b081ca98cbedc874e0d0", size = 11842, upload-time = "2024-07-21T12:58:20.04Z" },
+]
+
+[[package]]
+name = "py-cdhit"
+version = "1.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pandas" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a7/b0/f2181de9a66faf7cd0749b8b093f497f6e5c6099794099f52262c41adf16/py_cdhit-1.1.5.tar.gz", hash = "sha256:46884fb999c079966e6e1988517637f3d018939bc982aa5269a13521ffc632eb", size = 15437, upload-time = "2025-12-27T19:04:40.409Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d1/a0/bbfeaf9c73e0b657344b4912c57441a64d97806e1d99f7a899260c14d4e0/py_cdhit-1.1.5-py3-none-any.whl", hash = "sha256:43ba40c9354600fafc27af5a1e1f2cbb59c41f477b7f2a9e71fcd3aea88cb443", size = 13102, upload-time = "2025-12-27T19:04:37.631Z" },
 ]
 
 [[package]]
