@@ -13,7 +13,7 @@ def decoder_jacobian(
 ) -> torch.Tensor:
     r"""input shape: (batch_dim, latent_dim), output shape: (batch_dim, ambient_dim, latent_dim)"""
     assert x.ndim == 2, ValueError(f"x should be 2D, got {x.ndim}D instead.")
-    jacobian_fn_kwargs = jacobian_fn_kwargs if jacobian_fn_kwargs is not None else {}
+    jacobian_fn_kwargs = jacobian_fn_kwargs or {}
     if jacobian_fn_mode == "strict":
         return decoder_jacobian_strict(decoder_forward, x, **jacobian_fn_kwargs)
     elif jacobian_fn_mode == "approx":
@@ -59,51 +59,68 @@ def decoder_jacobian_approx(
     return rearrange(approx_jac, "b d a -> b a d")
 
 
-def softmax_probs_jacobian_fn(
-    decode_logits: Callable[[torch.Tensor], torch.Tensor],
-    *,
-    sequence_length: int,
-    vocab_size: int,
-    jacobian_mode: Literal["strict", "approx"] = "approx",
-    jacobian_eps: float = 1e-4,
-) -> Callable[[torch.Tensor], torch.Tensor]:
-    """Build ``jacobian_batch_fn(z)`` for ``substitutions_from_encoded_batch``.
+def decoder_second_derivative(
+    decoder_forward: Callable[[torch.Tensor], torch.Tensor],
+    z: torch.Tensor,
+    v1: torch.Tensor,
+    v2: torch.Tensor | None = None,
+    mode: Literal["strict", "approx"] = "approx",
+    kwargs: dict[str, Any] | None = None,
+) -> torch.Tensor:
+    r"""Second directional derivative D''(z)[v1, v2].
 
-    ``z`` must have shape ``[batch, latent_dim]`` with ``batch >= 1``. Returns the Jacobian of
-    ``softmax(decode_logits(z), dim=-1)`` with respect to ``z``, with shape
-    ``[batch, sequence_length * vocab_size, latent_dim]``.
+    If v2 is None, computes D''(z)[v1, v1].
+    Input shapes: z, v1, v2: (batch, latent_dim).
+    Output shape: (batch, ambient_dim).
     """
-    ambient = sequence_length * vocab_size
+    assert z.ndim == 2, ValueError(f"z should be 2D, got {z.ndim}D instead.")
+    if v2 is None:
+        v2 = v1
+    kwargs = kwargs or {}
+    if mode == "strict":
+        return decoder_second_derivative_strict(decoder_forward, z, v1, v2)
+    elif mode == "approx":
+        return decoder_second_derivative_approx(decoder_forward, z, v1, v2, **kwargs)
+    else:
+        raise ValueError(f"Unknown mode: {mode!r}")
 
-    def decoder_probs_flat(z_in: torch.Tensor) -> torch.Tensor:
-        logits = decode_logits(z_in)
-        if logits.ndim != 3 or logits.shape[1:] != (sequence_length, vocab_size):
-            raise ValueError(
-                f"decode_logits must return [batch, {sequence_length}, {vocab_size}], "
-                f"got {tuple(logits.shape)}"
-            )
-        probs = torch.softmax(logits, dim=-1)
-        return rearrange(probs, "batch seq vocab -> batch (seq vocab)")
 
-    def jac_fn(z: torch.Tensor) -> torch.Tensor:
-        if z.ndim != 2 or z.shape[0] < 1:
-            raise ValueError("z must have shape [batch, latent_dim] with batch >= 1")
-        if jacobian_mode == "approx":
-            z_in = z.detach().clone()
-            jac = decoder_jacobian(
-                decoder_probs_flat,
-                z_in,
-                "approx",
-                {"jacobian_eps": jacobian_eps},
-            )
-        else:
-            z_in = z.detach().clone().requires_grad_(True)
-            jac = decoder_jacobian(decoder_probs_flat, z_in, "strict", None)
-        if jac.ndim != 3 or jac.shape[1] != ambient:
-            raise RuntimeError(
-                f"Jacobian ambient dim {jac.shape[1]} != {ambient} "
-                "(sequence_length * vocab_size)"
-            )
-        return jac
+def decoder_second_derivative_approx(
+    decoder_forward: Callable[[torch.Tensor], torch.Tensor],
+    z: torch.Tensor,
+    v1: torch.Tensor,
+    v2: torch.Tensor,
+    field_eps: float = 1e-3,
+) -> torch.Tensor:
+    r"""Finite-difference approximation of D''(z)[v1, v2].
 
-    return jac_fn
+    Uses the mixed-derivative stencil (works for v1 == v2 as well):
+    D''(z)[v1, v2] ~ (f(z+e*v1+e*v2) - f(z+e*v1) - f(z+e*v2) + f(z)) / e^2
+    """
+    assert z.ndim == 2, ValueError(f"z should be 2D, got {z.ndim}D instead.")
+    batch = z.shape[0]
+    ev1 = field_eps * v1
+    ev2 = field_eps * v2
+    stacked = torch.cat([z + ev1 + ev2, z + ev1, z + ev2, z], dim=0)
+    with torch.no_grad():
+        out = decoder_forward(stacked)
+    out = out.view(4, batch, -1)
+    return (out[0] - out[1] - out[2] + out[3]) / (field_eps**2)
+
+
+def decoder_second_derivative_strict(
+    decoder_forward: Callable[[torch.Tensor], torch.Tensor],
+    z: torch.Tensor,
+    v1: torch.Tensor,
+    v2: torch.Tensor,
+) -> torch.Tensor:
+    r"""Exact second directional derivative via nested autograd JVP."""
+
+    def inner_jvp(z_: torch.Tensor) -> torch.Tensor:
+        _, jvp_val = torch.autograd.functional.jvp(
+            decoder_forward, z_, v1, create_graph=True
+        )
+        return jvp_val
+
+    _, second_jvp = torch.autograd.functional.jvp(inner_jvp, z, v2)
+    return second_jvp

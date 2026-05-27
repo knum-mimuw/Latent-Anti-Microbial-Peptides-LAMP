@@ -11,7 +11,7 @@ from pep_compass_jr.tangent_space_mutation_proposer import (
     substitutions_batch_from_jacobian,
     substitutions_from_encoded_batch,
 )
-from pep_compass_jr.utils import softmax_probs_jacobian_fn
+from pep_compass_jr.utils import decoder_jacobian
 
 
 def _linear_weight(*, latent_dim: int, seq_len: int, vocab_size: int) -> torch.Tensor:
@@ -49,13 +49,22 @@ def test_substitutions_batch_returns_per_position_dicts() -> None:
         flat = z @ w.to(z.device, dtype=z.dtype)
         return rearrange(flat, "b (s v) -> b s v", s=s_len, v=v_size)
 
-    jac_batch_fn = softmax_probs_jacobian_fn(
-        decode_logits,
-        sequence_length=s_len,
-        vocab_size=v_size,
-        jacobian_mode="approx",
-        jacobian_eps=1e-3,
-    )
+    def decoder_forward(z_in: torch.Tensor) -> torch.Tensor:
+        logits = decode_logits(z_in)
+        return torch.softmax(logits, dim=-1).reshape(z_in.shape[0], -1)
+
+    ambient = s_len * v_size
+
+    def jac_batch_fn(z: torch.Tensor) -> torch.Tensor:
+        z_in = z.detach().clone()
+        jac = decoder_jacobian(
+            decoder_forward,
+            z_in,
+            "approx",
+            {"jacobian_eps": 1e-3},
+        )
+        assert jac.shape[1] == ambient
+        return jac
     input_ids = torch.randint(0, v_size, (batch, seq_in), dtype=torch.long)
     out = substitutions_from_encoded_batch(
         input_ids,
