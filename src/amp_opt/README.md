@@ -49,7 +49,9 @@ Optional: **`n_mutations`** (default **1**), **`alphabet`**, **`tokenizer`** (fo
 
 Optional Jacobian tuning (defaults match **`substitutions_batch_from_jacobian`**): **`direction_significance_threshold`**, **`min_number_of_directions`**, **`token_threshold`**.
 
-**YAML / CLI:** bind models and Jacobians with **`solver.factory_import_path`**, e.g. **`amp_opt.mutang_hydramp_init:build_mutang_hydramp_solver`** (see **`configs/mutang_hydramp/overall_log2.yaml`**). That factory loads HydrAMP from the Hub with **`transformers`** and wires **`pep_compass_jr.utils.softmax_probs_jacobian_fn`**. Seed peptide length must equal **`model.config.sequence_length`** (HydrAMP is fixed-width).
+**YAML / CLI:** bind models and Jacobians with **`solver.factory_import_path`**, e.g. **`amp_opt.mutang_hydramp_init:build_mutang_hydramp_solver`** (see **`configs/mutang_hydramp/overall_log2.yaml`**). That factory loads HydrAMP from the Hub with **`transformers`**, chains **`softmax(decode_logits(z))`** with **`pep_compass_jr.utils.decoder_jacobian`** for the mutang Jacobian, and sets **`strict_jacobian_train_modules=(model,)`** when **`jacobian_mode: strict`** (cuDNN RNN backward).
+
+**Variable-length seeds:** seed peptides **shorter** than **`model.config.sequence_length`** are right-padded with a standard amino acid before tokenisation. The padding character defaults to **`G`** and can be overridden via `solver.kwargs.bb_pad_amino_acid` (must be a single standard AA). Mutations are restricted to the real peptide prefix — padded tail positions are never proposed. Seeds **longer** than the model length are rejected (no truncation). When the seed length matches the model length exactly, no padding or filtering is applied.
 
 ## Output CSV
 

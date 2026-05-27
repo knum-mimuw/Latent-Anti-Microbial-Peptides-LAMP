@@ -15,7 +15,7 @@ import torch
 from poli.core.abstract_black_box import AbstractBlackBox
 
 from amp_opt.mutang_solver import ProteinMutangUniformMutation
-from pep_compass_jr.utils import softmax_probs_jacobian_fn
+from pep_compass_jr.utils import decoder_jacobian
 
 
 def build_mutang_hydramp_solver(
@@ -81,13 +81,14 @@ def build_mutang_hydramp_solver(
     if x_arr.ndim != 2:
         raise ValueError(f"Expected 2D x0, got shape {x_arr.shape}.")
     bb_len = int(x_arr.shape[1])
-    if bb_len != seq_len:
+    if bb_len > seq_len:
         raise ValueError(
-            f"Seed row length {bb_len} must equal model.config.sequence_length ({seq_len}) "
-            "for HydrAMP mutang runs."
+            f"Seed row length {bb_len} exceeds model.config.sequence_length ({seq_len}); "
+            "truncation is not supported."
         )
+    mutable_prefix_len: int | None = None if bb_len == seq_len else bb_len
 
-    alphabet = [tokenizer.convert_id_to_token(i) for i in range(vocab_size)]
+    alphabet = [tokenizer.convert_ids_to_tokens(i) for i in range(vocab_size)]
 
     if condition is not None:
         cond_list = list(condition)
@@ -99,23 +100,20 @@ def build_mutang_hydramp_solver(
 
     def tokenize_row(row: np.ndarray) -> torch.Tensor:
         flat = row.reshape(-1)
-        if flat.size != seq_len:
+        if flat.size != bb_len:
             raise ValueError(
-                f"Row length {flat.size} != sequence_length {seq_len} (HydrAMP fixed width)."
+                f"Row length {flat.size} != expected black-box length {bb_len}."
             )
         seq = "".join(str(flat[i]) for i in range(flat.size))
         batch = tokenizer(
             seq,
             add_special_tokens=False,
             return_tensors="pt",
-            padding=False,
+            padding="max_length",
+            max_length=seq_len,
             truncation=False,
         )
         ids = batch["input_ids"].to(device)
-        if tuple(ids.shape) != (1, seq_len):
-            raise ValueError(
-                f"Tokenizer returned input_ids shape {tuple(ids.shape)}, expected (1, {seq_len})."
-            )
         return ids.long()
 
     def decode_row(ids_1d: np.ndarray) -> np.ndarray:
@@ -123,11 +121,12 @@ def build_mutang_hydramp_solver(
         if vec.size != seq_len:
             raise ValueError(f"decode_row expected length {seq_len}, got {vec.size}.")
         chars: list[str] = []
-        for vid in vec.tolist():
-            t = tokenizer.convert_id_to_token(int(vid))
+        for vid in vec[:bb_len].tolist():
+            t = tokenizer.convert_ids_to_tokens(int(vid))
             if t == tokenizer.pad_token:
                 raise ValueError(
-                    "Decoded a pad token in the sequence; pad is invalid for the APEX peptide box."
+                    "Decoded a pad token in the peptide prefix; "
+                    "pad is invalid for the APEX peptide box."
                 )
             chars.append(str(t))
         return np.array(chars, dtype=object)
@@ -150,13 +149,18 @@ def build_mutang_hydramp_solver(
             raise RuntimeError("forward_latent_positions returned no logits.")
         return logits
 
-    jacobian_batch_fn = softmax_probs_jacobian_fn(
-        decode_logits,
-        sequence_length=seq_len,
-        vocab_size=vocab_size,
-        jacobian_mode=jacobian_mode,  # type: ignore[arg-type]
-        jacobian_eps=jacobian_eps,
-    )
+    def decode_probs_flat(z: torch.Tensor) -> torch.Tensor:
+        logits = decode_logits(z)
+        probs = torch.softmax(logits, dim=-1)
+        return probs.reshape(z.shape[0], -1)
+
+    def jacobian_batch_fn(z: torch.Tensor) -> torch.Tensor:
+        return decoder_jacobian(
+            decode_probs_flat,
+            z,
+            jacobian_mode,
+            {"jacobian_eps": jacobian_eps} if jacobian_mode == "approx" else None,
+        )
 
     return ProteinMutangUniformMutation(
         black_box,
@@ -169,5 +173,6 @@ def build_mutang_hydramp_solver(
         alphabet=alphabet,
         tokenize_row=tokenize_row,
         decode_row=decode_row,
+        mutable_model_prefix_len=mutable_prefix_len,
         **kw,
     )

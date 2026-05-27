@@ -57,6 +57,7 @@ class ProteinMutangUniformMutation(StepByStepSolver):
         direction_significance_threshold: float = 1e-3,
         min_number_of_directions: int = 5,
         token_threshold: float = 0.1,
+        mutable_model_prefix_len: int | None = None,
     ):
         if int(n_mutations) < 1:
             raise ValueError("n_mutations must be >= 1.")
@@ -95,6 +96,15 @@ class ProteinMutangUniformMutation(StepByStepSolver):
         self._token_thresh = float(token_threshold)
         self._tokenize_row = tokenize_row
         self._decode_row = decode_row
+        if mutable_model_prefix_len is not None:
+            pfx = int(mutable_model_prefix_len)
+            if pfx < 1 or pfx > int(sequence_length):
+                raise ValueError(
+                    f"mutable_model_prefix_len must be in [1, sequence_length]; got {pfx}."
+                )
+            self._mutable_prefix: int | None = pfx
+        else:
+            self._mutable_prefix = None
 
         info_alpha = black_box.info.get_alphabet()
         self.alphabet = list(info_alpha) if alphabet is None else list(alphabet)
@@ -219,6 +229,8 @@ class ProteinMutangUniformMutation(StepByStepSolver):
                 )
 
             pairs = non_identity_mutation_pairs(subst_list[0], cur_ids)
+            if self._mutable_prefix is not None:
+                pairs = [(p, v) for p, v in pairs if p < self._mutable_prefix]
             if not pairs:
                 raise ValueError(
                     "Jacobian substitution proposal yielded no non-identity single mutations "

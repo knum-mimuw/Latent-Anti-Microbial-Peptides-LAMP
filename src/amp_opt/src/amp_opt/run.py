@@ -10,6 +10,7 @@ from typing import Annotated, Any
 import numpy as np
 import typer
 from poli.core.exceptions import BudgetExhaustedException
+from tqdm import tqdm
 
 from amp_opt.black_box import (
     ApexBlackBox,
@@ -113,7 +114,7 @@ def run_with_config(config_path: Path) -> None:
             if need_header:
                 writer.writeheader()
 
-            for row_index, row in enumerate(rows):
+            for row_index, row in tqdm(enumerate(rows), total=len(rows), desc=f"seed_{rng_seed}"):
                 seed_id_raw = row.get(id_col, "")
                 seq_raw = row.get(seq_col, "")
                 seed_id = str(seed_id_raw).strip() if seed_id_raw is not None else ""
@@ -151,82 +152,62 @@ def run_with_config(config_path: Path) -> None:
                     continue
 
                 L = len(normalized)
-                black_box_inst: ApexBlackBox | None = None
                 seed_python_numpy_torch(rng_seed)
-                try:
-                    black_box_inst = ApexBlackBox(
-                        predictor=predictor,
-                        mic_column_indices=mic_indices,
-                        aggregation=cfg.black_box.aggregation,
-                        mic_transform=cfg.black_box.mic_transform,
-                        sequence_length=L,
-                        batch_size=cfg.black_box.apex.batch_size,
-                        evaluation_budget=eval_budget,
-                    )
-                    x0 = np.array([list(normalized)])
-                    y0 = black_box_inst(x0)
+                black_box_inst = ApexBlackBox(
+                    predictor=predictor,
+                    mic_column_indices=mic_indices,
+                    aggregation=cfg.black_box.aggregation,
+                    mic_transform=cfg.black_box.mic_transform,
+                    sequence_length=L,
+                    batch_size=cfg.black_box.apex.batch_size,
+                    evaluation_budget=eval_budget,
+                )
+                x0 = np.array([list(normalized)])
+                y0 = black_box_inst(x0)
 
-                    solver = factory(
-                        black_box_inst,
-                        x0,
-                        y0,
-                        dict(opt.solver.kwargs),
+                solver = factory(
+                    black_box_inst,
+                    x0,
+                    y0,
+                    dict(opt.solver.kwargs),
+                )
+                if not isinstance(solver, StepByStepSolver):
+                    raise TypeError(
+                        f"Solver factory {factory_path!r} must return a StepByStepSolver; "
+                        f"got {type(solver).__name__}."
                     )
-                    if not isinstance(solver, StepByStepSolver):
-                        raise TypeError(
-                            f"Solver factory {factory_path!r} must return a StepByStepSolver; "
-                            f"got {type(solver).__name__}."
-                        )
 
-                    iterations = 0
-                    while True:
-                        if opt.max_iterations is not None and iterations >= opt.max_iterations:
-                            break
-                        if eval_cap is not None and black_box_inst.num_evaluations >= eval_cap:
-                            break
-                        try:
-                            solver.step()
-                        except BudgetExhaustedException:
-                            break
-                        iterations += 1
+                iterations = 0
+                while True:
+                    if opt.max_iterations is not None and iterations >= opt.max_iterations:
+                        break
+                    if eval_cap is not None and black_box_inst.num_evaluations >= eval_cap:
+                        break
+                    try:
+                        solver.step()
+                    except BudgetExhaustedException:
+                        break
+                    iterations += 1
 
-                    best_x_arr = solver.get_best_solution(top_k=1)
-                    best_y_arr = solver.get_best_performance()
-                    best_seq = "".join(str(x) for x in best_x_arr.reshape(-1).tolist())
-                    best_fit = float(np.asarray(best_y_arr).reshape(-1)[0])
+                best_x_arr = solver.get_best_solution(top_k=1)
+                best_y_arr = solver.get_best_performance()
+                best_seq = "".join(str(x) for x in best_x_arr.reshape(-1).tolist())
+                best_fit = float(np.asarray(best_y_arr).reshape(-1)[0])
 
-                    _write_result_row(
-                        writer,
-                        fh,
-                        common_meta,
-                        seed_id=seed_id or str(row_index),
-                        seed_sequence=normalized,
-                        best_sequence=best_seq,
-                        best_fitness=f"{best_fit:.17g}",
-                        black_box_signature=signature,
-                        status="ok",
-                        error_message="",
-                        solver_iterations=str(iterations),
-                        black_box_evaluations=str(int(black_box_inst.num_evaluations)),
-                    )
-                except Exception as exc:
-                    n_eval = ""
-                    if black_box_inst is not None:
-                        n_eval = str(int(black_box_inst.num_evaluations))
-                    _write_result_row(
-                        writer,
-                        fh,
-                        common_meta,
-                        seed_id=seed_id or str(row_index),
-                        seed_sequence=normalized,
-                        best_sequence="",
-                        best_fitness="",
-                        black_box_signature=signature,
-                        status="error",
-                        error_message=f"{type(exc).__name__}: {exc}",
-                        solver_iterations="",
-                        black_box_evaluations=n_eval,
-                    )
+                _write_result_row(
+                    writer,
+                    fh,
+                    common_meta,
+                    seed_id=seed_id or str(row_index),
+                    seed_sequence=normalized,
+                    best_sequence=best_seq,
+                    best_fitness=f"{best_fit:.17g}",
+                    black_box_signature=signature,
+                    status="ok",
+                    error_message="",
+                    solver_iterations=str(iterations),
+                    black_box_evaluations=str(int(black_box_inst.num_evaluations)),
+                )
 
 
 def cli(
