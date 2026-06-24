@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
-TRACKING_URI="${MLFLOW_TRACKING_URI:-file:./mlflow-store}"
+TRACKING_URI="${MLFLOW_TRACKING_URI:-sqlite:///$REPO_ROOT/mlflow-store/mlflow.db}"
 # Absolute path so ZenML resolves the store correctly when the pipeline runs
 # from a cwd other than the repo root (e.g. src/modelling).
 ARTIFACT_PATH="$REPO_ROOT/zenml-artifacts"

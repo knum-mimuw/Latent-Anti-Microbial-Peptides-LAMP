@@ -1,0 +1,21 @@
+[project]
+name = "pep-eval"
+version = "0.1.0"
+description = "AMP challenge evaluation logic and MLflow logging"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=2.14.0",
+    "mlflow>=3.10.1",
+    "numpy>=1.26,<2",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]

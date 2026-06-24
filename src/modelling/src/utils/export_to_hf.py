@@ -55,6 +55,7 @@ def export_to_huggingface(
         metadata: Optional metadata to save locally and include in the model card.
     """
     from huggingface_hub import HfApi, create_branch, create_tag
+    from huggingface_hub.errors import HfHubHTTPError
 
     checkpoint = _load_checkpoint(checkpoint_path)
     checkpoint_path = Path(checkpoint_path).resolve()
@@ -88,9 +89,16 @@ def export_to_huggingface(
             exist_ok=True,
         )
 
+    resolved_title = model_card_title or repo_id.split("/")[-1]
+
     with tempfile.TemporaryDirectory(prefix="lamp-hf-export-") as temp_dir:
         export_dir = Path(temp_dir)
         model.save_pretrained(export_dir)
+        _inject_auto_map(
+            export_dir=export_dir,
+            config_class=checkpoint["config_class"],
+            model_class=checkpoint["model_class"],
+        )
         _write_remote_code_files(
             export_dir=export_dir,
             model_class=checkpoint["model_class"],
@@ -103,7 +111,7 @@ def export_to_huggingface(
             checkpoint_path=checkpoint_path,
             model_class_path=checkpoint["model_class_path"],
             config_class_path=checkpoint["config_class_path"],
-            model_card_title=model_card_title or repo_id.split("/")[-1],
+            model_card_title=resolved_title,
             metadata=metadata_dict,
         )
         _write_runtime_requirements(export_dir)
@@ -117,14 +125,29 @@ def export_to_huggingface(
             commit_message=commit_message,
         )
 
-    if tag:
-        create_tag(
+    if upload_revision != "main":
+        _upload_main_readme(
+            api=api,
             repo_id=repo_id,
-            repo_type="model",
-            tag=tag,
+            model_card_title=resolved_title,
             revision=upload_revision,
-            token=token,
+            tag=tag,
         )
+
+    if tag:
+        try:
+            create_tag(
+                repo_id=repo_id,
+                repo_type="model",
+                tag=tag,
+                revision=upload_revision,
+                token=token,
+            )
+        except HfHubHTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 409:
+                print(f"Tag '{tag}' already exists on {repo_id}; skipping.")
+            else:
+                raise
 
     result: HfExportResult = {
         "repo_id": repo_id,
@@ -137,6 +160,69 @@ def export_to_huggingface(
     }
     print(f"Done! Model available at: {result['hub_url']}")
     return result
+
+
+def _inject_auto_map(
+    export_dir: Path,
+    config_class: type[Any],
+    model_class: type[Any],
+) -> None:
+    """Ensure config.json contains the auto_map needed for trust_remote_code loading."""
+    config_json_path = export_dir / "config.json"
+    config_data = json.loads(config_json_path.read_text())
+    if "auto_map" not in config_data:
+        config_data["auto_map"] = {
+            "AutoConfig": f"config.{config_class.__name__}",
+            "AutoModel": f"model.{model_class.__name__}",
+        }
+        config_json_path.write_text(json.dumps(config_data, indent=2, sort_keys=True) + "\n")
+
+
+def _upload_main_readme(
+    api: Any,
+    repo_id: str,
+    model_card_title: str,
+    revision: str,
+    tag: str | None,
+) -> None:
+    """Upload a README to main so the repo page isn't empty."""
+    load_ref = tag or revision
+    readme = "\n".join(
+        [
+            "---",
+            "library_name: transformers",
+            "tags:",
+            "- lamp",
+            "- pytorch",
+            "- custom-code",
+            "---",
+            f"# {model_card_title}",
+            "",
+            "## Loading",
+            "",
+            "```python",
+            "from transformers import AutoModel",
+            "",
+            "model = AutoModel.from_pretrained(",
+            f'    "{repo_id}",',
+            f'    revision="{load_ref}",',
+            "    trust_remote_code=True,",
+            ")",
+            "```",
+            "",
+            f"See the [`{revision}`](https://huggingface.co/{repo_id}/tree/{revision})"
+            " branch for full model files and metadata.",
+            "",
+        ]
+    )
+    api.upload_file(
+        repo_id=repo_id,
+        repo_type="model",
+        path_or_fileobj=readme.encode(),
+        path_in_repo="README.md",
+        revision="main",
+        commit_message=f"Update main README (latest release: {load_ref})",
+    )
 
 
 def _load_checkpoint(checkpoint_path: str | Path) -> dict[str, Any]:

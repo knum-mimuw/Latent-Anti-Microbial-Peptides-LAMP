@@ -1,0 +1,27 @@
+# Configuration for DBAASP peptide ingestion and upload
+# Pulls monomer peptides from https://dbaasp.org/peptides (REST API)
+# and stores id + sequence as a subset of the main dataset repository.
+
+prepare:
+  base_url: https://dbaasp.org
+  page_size: 500
+  complexity: monomer
+  max_length: 50
+  allowed_amino_acids: ACDEFGHIKLMNPQRSTVWY
+  max_sequences: null
+  request_timeout_s: 30
+  user_agent: "LAMP/dbaasp-ingest"
+  source_version: "v3 (API 4.0.1)"
+  snapshot_date: "2026-05-14"
+
+upload:
+  repo_id: pszmk/LAMP-datasets
+  subset_name: dbaasp_peptides_leq50aa
+
+  commit_message: "Add DBAASP peptides (id + sequence, monomers, ≤50 AA, canonical AA)"
+  token: null  # Will use HF_TOKEN environment variable if not set
+
+  # Column mapping for Hugging Face dataset (source field -> target column)
+  columns:
+    dbaasp_id: dbaasp_id
+    sequence: sequence

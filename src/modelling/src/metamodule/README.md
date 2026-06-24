@@ -40,12 +40,11 @@ Losses are computed via `LossManager` during each step:
 
 ### Model Interface
 
-The wrapped model's forward method should accept keyword arguments from the batch and return a dictionary:
+The wrapped model's forward method should accept keyword arguments from the batch and return a **mapping** (plain `dict` or a Hugging Face `ModelOutput` subclass) whose keys match your loss `output_key_mapping`:
 
 ```python
-def forward(self, **kwargs) -> Dict[str, Any]:
-    # Process inputs
-    # Return dict with outputs and any intermediate values
+def forward(self, **kwargs):
+    # Process inputs; return a mapping (dict or transformers.ModelOutput subclass)
     return {
         "logits": logits,
         "embeddings": embeddings,

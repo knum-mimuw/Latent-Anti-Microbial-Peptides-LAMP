@@ -18,30 +18,32 @@ data:
         train:
           hf_kwargs:
             path: "pszmk/LAMP-datasets"
+            name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
             split: "train"
 
       val_datasets:
         val:
           hf_kwargs:
             path: "pszmk/LAMP-datasets"
+            name: "nvidia_esm2_uniref_pretraining_data_leq50aa"
             split: "validation"
 
       train_dataloader_kwargs:
-        batch_size: 4096
+        batch_size: 8192
         num_workers: 4
         pin_memory: true
         shuffle: true
         drop_last: false
 
       val_dataloader_kwargs:
-        batch_size: 1024
+        batch_size: 8192
         num_workers: 4
         pin_memory: true
         shuffle: false
         drop_last: false
 
       test_dataloader_kwargs:
-        batch_size: 32
+        batch_size: 8192
         num_workers: 4
         pin_memory: true
         shuffle: false

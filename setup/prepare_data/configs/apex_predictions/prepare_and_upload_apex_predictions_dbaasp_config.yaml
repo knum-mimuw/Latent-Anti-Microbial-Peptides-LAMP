@@ -1,0 +1,19 @@
+# APEX MIC predictions over the DBAASP subset, uploaded as a sidecar subset.
+# Joins to dbaasp_peptides_leq50aa via dbaasp_id.
+
+prepare:
+  dataset_name: pszmk/LAMP-datasets
+  dataset_config: dbaasp_peptides_leq50aa
+  split: null # all splits (DBAASP subset only has `train`)
+  peptide_id_column: dbaasp_id
+  sequence_column: sequence
+  device: cuda
+  batch_size: 8192
+  chunk_size: 20000
+  path_mode: apex_pathogen # or apex_full_pathogen
+  use_tqdm: true
+
+upload:
+  repo_id: pszmk/LAMP-datasets
+  subset_name: apex_predictions_dbaasp_leq50aa
+  commit_message: "Add APEX pathogen MIC sidecar for DBAASP ≤50 AA monomers"

@@ -1,0 +1,9 @@
+# Upload HydrAMP remote-code model to the Hub branch `main`.
+# Paths (weights_dir) are relative to this file unless absolute.
+# Requires HF_TOKEN or `hf auth login` with write access to `repo_id`.
+
+artifact: model
+repo_id: pszmk/hydramp
+revision: main
+weights_dir: ../weights
+private: false

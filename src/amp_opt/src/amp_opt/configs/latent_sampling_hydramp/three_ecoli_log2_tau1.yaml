@@ -1,0 +1,48 @@
+seed_sequences:
+  path: data/pep_compass_seeds.csv
+  id_column: id
+  sequence_column: sequence
+
+output:
+  directory: results/optimization/latent_sampling_hydramp/three_ecoli_log2_tau1
+  mode: write
+
+black_box:
+  apex:
+    path: default
+    device: cuda
+    batch_size: 512
+  columns:
+    mode: explicit
+    panel: null
+    pathogen_names:
+      - "E. coli ATCC 11775"
+      - "E. coli AIG221"
+      - "E. coli AIG222"
+  aggregation: mean
+  mic_transform: log2
+
+optimization:
+  random_seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+  max_total_evaluations: 2000
+  max_iterations: null
+  solver:
+    factory_import_path: amp_opt.latent_sampling_hydramp_init:build_latent_sampling_hydramp_solver
+    kwargs:
+      hf_model_repo_id: pszmk/hydramp
+      hf_tokenizer_repo_id: pszmk/hydramp-aa-tokenizer
+      device: cuda
+      tau: 1.0
+      top_k: 1
+      greedy: true
+      batch_size: 1

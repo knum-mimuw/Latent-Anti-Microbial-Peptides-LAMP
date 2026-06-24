@@ -45,8 +45,10 @@ zenml-artifacts/
 .mlflow-cache/
 tmp-mlruns/
 
-# Neptune client local state (legacy runs)
-**/.neptune/
+# outputs
+outputs/
+data/
+results/
 
 # dev directory
 dev/

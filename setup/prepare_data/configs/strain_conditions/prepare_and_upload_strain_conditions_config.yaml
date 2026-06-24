@@ -1,0 +1,57 @@
+# Configuration for mean-based strain condition sidecar generation + upload
+
+prepare:
+  dataset_name: your-org/your-peptide-dataset
+  dataset_config: apex_predictions
+  split: train
+  peptide_id_column: peptide_id
+  strain_columns:
+    # Gram-negative (requested 15)
+    - A. baumannii ATCC 19606
+    # - A. baumannii ATCC BAA-1605 (CGTPACCIMRA) # missing from APEX pathogen outputs
+    # - E. cloacae ATCC 13047 # missing from APEX pathogen outputs
+    - E. coli ATCC 11775
+    - E. coli AIG221 # closest available to requested "E. coli AIC221"
+    - E. coli AIG222 # closest available to requested "E. coli AIC222 (CRE)"
+    # - E. coli ATCC BAA-3170 (CRE) # missing from APEX pathogen outputs
+    # - E. coli K-12 BW25113 # missing from APEX pathogen outputs
+    - K. pneumoniae ATCC 13883
+    # - K. pneumoniae ATCC BAA-2342 (EIRK) # missing from APEX pathogen outputs
+    # - P. aeruginosa PAO1 # not present as-is; available label is "P. aeruginosa PA01"
+    - P. aeruginosa PA01
+    - P. aeruginosa PA14
+    # - P. aeruginosa ATCC BAA-3197 (FBCRP) # missing from APEX pathogen outputs
+    # - S. enterica ATCC 9150 # not present as-is; full-pathogen labels use "Salmonella enterica ..."
+    # - S. enterica Typhimurium ATCC 700720 # missing from APEX pathogen outputs
+
+    # Gram-positive (requested 5)
+    # - B. subtilis ATCC 23857 # missing from APEX pathogen outputs
+    - S. aureus ATCC 12600
+    # - S. aureus ATCC BAA-1556 (MRSA) # not present as-is; available label is "S. aureus (ATCC BAA-1556) - MRSA"
+    - S. aureus (ATCC BAA-1556) - MRSA
+    # - E. faecalis ATCC 700802 (VRE) # not present as-is; available label is "vancomycin-resistant E. faecalis ATCC 700802"
+    - vancomycin-resistant E. faecalis ATCC 700802
+    # - E. faecium ATCC 700221 (VRE) # not present as-is; available label is "vancomycin-resistant E. faecium ATCC 700221"
+    - vancomycin-resistant E. faecium ATCC 700221
+  strain_groups:
+    gram_negative:
+      - A. baumannii ATCC 19606
+      - E. coli ATCC 11775
+      - E. coli AIG221
+      - E. coli AIG222
+      - K. pneumoniae ATCC 13883
+      - P. aeruginosa PA01
+      - P. aeruginosa PA14
+    gram_positive:
+      - S. aureus ATCC 12600
+      - S. aureus (ATCC BAA-1556) - MRSA
+      - vancomycin-resistant E. faecalis ATCC 700802
+      - vancomycin-resistant E. faecium ATCC 700221
+  batch_size: 50000
+
+upload:
+  repo_id: your-org/your-peptide-dataset
+  subset_name: strain_conditions
+  split: train
+  commit_message: "Add mean-based strain condition sidecar features"
+  token: null # Uses HF_TOKEN when null
